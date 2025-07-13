@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp files
+*.tmp
+*.temp
+*.cache
+
+# Config local
+*.local
+config.local.lua
+
+# Backups
+*.backup
+*.bak
+
+# Database dumps
+*.sql.gz
+*.sql.zip
