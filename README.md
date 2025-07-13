@@ -11,7 +11,7 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 - **Complete Tuning System**: Performance upgrades, visual modifications, and nitro installation
 - **Advanced Billing System**: Create detailed invoices with labor and parts breakdown
 - **Parts Inventory Management**: Shop stock management with supplier ordering
-- **Realistic Damage System**: Dynamic damage detection with wheel misalignment
+- **Realistic Damage System**: Dynamic damage detection with wheel misalignment using ox_lib cache system
 - **Towing System**: Multiple tow vehicle types with realistic physics
 - **Mission System**: Dynamic repair missions for extra income
 - **Lift System**: Synchronized vehicle lifts with smooth animations
@@ -19,6 +19,7 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 - **Maintenance History**: Track all repairs and services performed on vehicles
 - **Performance Analysis**: Detailed vehicle performance metrics and upgrades
 - **Fluid Management**: Oil, coolant, brake fluid, and more with visual indicators
+- **Smart Vehicle Monitoring**: Uses ox_lib cache for efficient vehicle and seat detection
 
 ## Dependencies
 

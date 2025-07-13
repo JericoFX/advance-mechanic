@@ -9,7 +9,7 @@ function Damage.StartMonitoring(vehicle)
     damageCheckTime = GetGameTimer() + 5000
     
     monitoringThread = CreateThread(function()
-        while cache.vehicle == vehicle and GetPedInVehicleSeat(vehicle, -1) == cache.ped do
+        while cache.vehicle == vehicle and cache.seat == -1 do
             if GetGameTimer() > damageCheckTime then
                 local speed = GetEntitySpeed(vehicle) * 3.6
                 
@@ -49,6 +49,14 @@ function Damage.Monitor()
             Damage.StartMonitoring(vehicle)
             Damage.ApplySteeringCorrection()
         else
+            Damage.StopMonitoring()
+        end
+    end)
+    
+    lib.onCache('seat', function(seat)
+        if cache.vehicle and seat == -1 then
+            Damage.StartMonitoring(cache.vehicle)
+        elseif seat ~= -1 then
             Damage.StopMonitoring()
         end
     end)
