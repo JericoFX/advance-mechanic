@@ -21,6 +21,33 @@ function Vehicles.GetInspectionData(plate)
     return defaultData
 end
 
+-- Get vehicle fluid data
+function Vehicles.GetFluidData(plate)
+    local query = 'SELECT fluid_data FROM player_vehicles WHERE plate = ?'
+    local result = MySQL.query.await(query, {plate})
+    
+    if result and result[1] and result[1].fluid_data then
+        return json.decode(result[1].fluid_data)
+    end
+    
+    -- Return default fluid data
+    return {
+        oilLevel = 100,
+        coolantLevel = 100,
+        brakeFluidLevel = 100,
+        transmissionFluidLevel = 100,
+        powerSteeringLevel = 100,
+        lastUpdated = os.time()
+    }
+end
+
+-- Update vehicle fluid data
+function Vehicles.UpdateFluidData(plate, data)
+    local query = 'UPDATE player_vehicles SET fluid_data = ? WHERE plate = ?'
+    data.lastUpdated = os.time()
+    return MySQL.update.await(query, {json.encode(data), plate}) > 0
+end
+
 -- Update vehicle inspection data
 function Vehicles.UpdateInspectionData(plate, data)
     local query = 'UPDATE player_vehicles SET inspection_data = ? WHERE plate = ?'
@@ -214,6 +241,14 @@ end)
 
 lib.callback.register('mechanic:server:purchasePart', function(source, partId, quantity, totalPrice)
     return Vehicles.PurchasePart(source, partId, quantity, totalPrice)
+end)
+
+lib.callback.register('mechanic:server:getVehicleFluidData', function(source, plate)
+    return Vehicles.GetFluidData(plate)
+end)
+
+lib.callback.register('mechanic:server:updateVehicleFluidData', function(source, plate, fluidData)
+    return Vehicles.UpdateFluidData(plate, fluidData)
 end)
 
 -- Events

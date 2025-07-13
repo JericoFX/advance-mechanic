@@ -14,6 +14,7 @@ local Missions = require 'client.modules.missions'
 local Tuning = require 'client.modules.tuning'
 local Billing = require 'client.modules.billing'
 local Diagnostic = require 'client.modules.diagnostic'
+local FluidEffects = require 'client.modules.fluid_effects'
 
 -- Initialize player loaded state
 local playerLoaded = false
@@ -27,6 +28,9 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     
     -- Initialize damage monitoring
     Damage.Monitor()
+    
+    -- Initialize fluid effects monitoring
+    FluidEffects.Monitor()
 end)
 
 -- Player unloaded event
@@ -42,6 +46,7 @@ AddEventHandler('onResourceStart', function(resourceName)
         playerLoaded = true
         Shops.LoadShops()
         Damage.Monitor()
+        FluidEffects.Monitor()
     end
 end)
 

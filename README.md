@@ -20,6 +20,11 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 - **Performance Analysis**: Detailed vehicle performance metrics and upgrades
 - **Fluid Management**: Oil, coolant, brake fluid, and more with visual indicators
 - **Smart Vehicle Monitoring**: Uses ox_lib cache for efficient vehicle and seat detection
+- **Realistic Fluid Effects**: Vehicle performance degradation based on fluid levels:
+  - Low brake fluid reduces braking power
+  - Low engine oil causes engine damage and power loss
+  - Low coolant leads to engine overheating and shutdown
+  - Low power steering fluid makes steering difficult
 
 ## Dependencies
 

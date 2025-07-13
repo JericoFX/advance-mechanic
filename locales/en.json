@@ -282,5 +282,17 @@
   "matte": "Matte",
   "chrome": "Chrome",
   "applying_paint": "Applying paint...",
-  "paint_applied": "Paint applied successfully"
+  "paint_applied": "Paint applied successfully",
+  "low_brake_fluid": "Low Brake Fluid",
+  "brakes_severely_reduced": "Braking power severely reduced!",
+  "brakes_reduced": "Braking power reduced",
+  "low_engine_oil": "Low Engine Oil",
+  "engine_damage_risk": "Engine damage imminent!",
+  "low_coolant": "Low Coolant",
+  "engine_overheating": "Engine is overheating!",
+  "engine_overheated": "Engine Overheated",
+  "engine_shutdown": "Engine has shut down due to overheating!",
+  "low_power_steering": "Low Power Steering Fluid",
+  "steering_difficulty": "Steering is very difficult!",
+  "steering_slightly_heavy": "Steering feels slightly heavy"
 }
