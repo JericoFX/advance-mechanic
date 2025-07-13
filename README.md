@@ -20,11 +20,15 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 - **Performance Analysis**: Detailed vehicle performance metrics and upgrades
 - **Fluid Management**: Oil, coolant, brake fluid, and more with visual indicators
 - **Smart Vehicle Monitoring**: Uses ox_lib cache for efficient vehicle and seat detection
-- **Realistic Fluid Effects**: Vehicle performance degradation based on fluid levels:
-  - Low brake fluid reduces braking power
-  - Low engine oil causes engine damage and power loss
-  - Low coolant leads to engine overheating and shutdown
-  - Low power steering fluid makes steering difficult
+- **Advanced Fluid Effects System**: Realistic vehicle performance degradation with:
+  - **Brake Fluid**: Below 50% reduces braking to 60%, below 30% to 30% power
+  - **Engine Oil**: Below 30% causes continuous engine damage and 30% speed reduction
+  - **Coolant**: Below 30% causes overheating, critical temperature shuts down engine
+  - **Power Steering**: Below 50% makes steering heavy, below 30% very difficult
+  - **Automatic Degradation**: Fluids degrade based on speed, engine health, and time
+  - **Real-time Sync**: Database synchronization every 5 minutes
+  - **Memory Management**: Automatic cleanup of unused vehicle data
+  - **Anti-cheat Protection**: Server-side validation of fluid levels
 
 ## Dependencies
 
@@ -38,8 +42,9 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 1. Download and extract the resource to your resources folder
 2. Add `ensure advanced-mechanic` to your server.cfg
 3. Import the SQL file to your database
-4. Configure the resource in `config.lua`
-5. Restart your server
+4. Import `fluid_data_migration.sql` to add fluid data columns
+5. Configure the resource in `config.lua`
+6. Restart your server
 
 ## Database Setup
 
@@ -69,6 +74,9 @@ CREATE TABLE IF NOT EXISTS `mechanic_lifts` (
   KEY `shop_id` (`shop_id`),
   CONSTRAINT `mechanic_lifts_ibfk_1` FOREIGN KEY (`shop_id`) REFERENCES `mechanic_shops` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Run fluid_data_migration.sql to add fluid support:
+ALTER TABLE player_vehicles ADD COLUMN IF NOT EXISTS fluid_data LONGTEXT DEFAULT NULL;
 ```
 
 ## Commands
@@ -134,6 +142,8 @@ Add these items to your inventory system:
 - `brake_part` - Brake replacement part
 - `transmission_part` - Transmission replacement part
 - `suspension_part` - Suspension replacement part
+- `coolant` - Engine coolant for refilling
+- `power_steering_fluid` - Power steering fluid
 
 ## Shop Zones
 
@@ -159,6 +169,28 @@ The lift system allows mechanics to:
 - Only mechanics can access the mechanic menu
 - Only shop owners can manage their shops
 - Lift usage is restricted to one player at a time
+
+## Fluid System Details
+
+The fluid effects system provides realistic vehicle behavior:
+
+### Degradation Factors
+- **Base Rate**: 0.1% oil/coolant, 0.05% brake/steering per 30 seconds
+- **Damaged Engine** (<900 health): 2x oil, 1.5x coolant degradation
+- **High Speed** (>120 km/h): 1.5x oil, 2x coolant/brake degradation
+
+### Performance Effects
+- **Brake Fluid**: Directly modifies vehicle brake force
+- **Engine Oil**: Causes engine damage (0.5 HP/s) and speed reduction
+- **Coolant**: Increases engine temperature, auto-shutdown at 120°C
+- **Power Steering**: Modifies steering lock angle
+
+### Technical Features
+- Caches original vehicle handling for proper restoration
+- Uses Entity state bags for multiplayer synchronization
+- Implements warning system to prevent notification spam
+- Automatic memory cleanup every 10 minutes
+- Server validation prevents cheating
 
 ## Support
 

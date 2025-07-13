@@ -281,4 +281,39 @@ RegisterNetEvent('mechanic:client:syncVehicleProperties', function(netId, props)
     end
 end)
 
+-- Sincronización de niveles de fluidos
+RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
+    local src = source
+    
+    -- Validar datos
+    if not plate or not fluidData then return end
+    
+    -- Validar que el jugador esté cerca del vehículo
+    local ped = GetPlayerPed(src)
+    local vehicle = Vehicles.GetVehicleByPlate(plate)
+    
+    if vehicle and DoesEntityExist(vehicle) then
+        local vehicleCoords = GetEntityCoords(vehicle)
+        local playerCoords = GetEntityCoords(ped)
+        
+        -- Solo permitir sincronización si está cerca del vehículo
+        if #(vehicleCoords - playerCoords) < 10.0 then
+            -- Validar niveles de fluidos (anti-cheat)
+            fluidData.oilLevel = math.max(0, math.min(100, fluidData.oilLevel or 100))
+            fluidData.coolantLevel = math.max(0, math.min(100, fluidData.coolantLevel or 100))
+            fluidData.brakeFluidLevel = math.max(0, math.min(100, fluidData.brakeFluidLevel or 100))
+            fluidData.transmissionFluidLevel = math.max(0, math.min(100, fluidData.transmissionFluidLevel or 100))
+            fluidData.powerSteeringLevel = math.max(0, math.min(100, fluidData.powerSteeringLevel or 100))
+            
+            -- Actualizar en base de datos
+            Vehicles.UpdateFluidData(plate, fluidData)
+            
+            -- Log para debugging
+            if Config.Debug then
+                print(string.format('[Mechanic] Player %s synced fluid levels for vehicle %s', src, plate))
+            end
+        end
+    end
+end)
+
 return Vehicles
