@@ -253,4 +253,105 @@ RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, damageData)
     })
 end)
 
+-- Enhanced fluid and component data callback
+lib.callback.register('mechanic:server:getVehicleFluidData', function(source, plate)
+    local result = MySQL.query.await('SELECT fluid_data FROM player_vehicles WHERE plate = ?', {plate})
+    
+    if result and result[1] and result[1].fluid_data then
+        local fluidData = json.decode(result[1].fluid_data)
+        return {
+            oilLevel = fluidData.oilLevel or 100,
+            coolantLevel = fluidData.coolantLevel or 100,
+            brakeFluidLevel = fluidData.brakeFluidLevel or 100,
+            transmissionFluidLevel = fluidData.transmissionFluidLevel or 100,
+            powerSteeringLevel = fluidData.powerSteeringLevel or 100,
+            tireWear = fluidData.tireWear or 0,
+            batteryLevel = fluidData.batteryLevel or 100,
+            gearBoxHealth = fluidData.gearBoxHealth or 100
+        }
+    end
+    
+    -- Return default values for new vehicles
+    return {
+        oilLevel = 100,
+        coolantLevel = 100,
+        brakeFluidLevel = 100,
+        transmissionFluidLevel = 100,
+        powerSteeringLevel = 100,
+        tireWear = 0,
+        batteryLevel = 100,
+        gearBoxHealth = 100
+    }
+end)
+
+-- Enhanced fluid sync event
+RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
+    local src = source
+    
+    -- Enhanced fluid data with new components
+    local enhancedFluidData = {
+        oilLevel = fluidData.oilLevel or 100,
+        coolantLevel = fluidData.coolantLevel or 100,
+        brakeFluidLevel = fluidData.brakeFluidLevel or 100,
+        transmissionFluidLevel = fluidData.transmissionFluidLevel or 100,
+        powerSteeringLevel = fluidData.powerSteeringLevel or 100,
+        tireWear = fluidData.tireWear or 0,
+        batteryLevel = fluidData.batteryLevel or 100,
+        gearBoxHealth = fluidData.gearBoxHealth or 100,
+        lastUpdate = os.time()
+    }
+    
+    MySQL.update('UPDATE player_vehicles SET fluid_data = ? WHERE plate = ?', {
+        json.encode(enhancedFluidData),
+        plate
+    })
+end)
+
+-- Repair component callback
+lib.callback.register('mechanic:server:repairComponent', function(source, plate, component, cost)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    
+    if not Player or Player.PlayerData.job.name ~= Config.JobName then
+        return false
+    end
+    
+    if Player.Functions.RemoveMoney('cash', cost) then
+        -- Get current fluid data
+        local result = MySQL.query.await('SELECT fluid_data FROM player_vehicles WHERE plate = ?', {plate})
+        local fluidData = {}
+        
+        if result and result[1] and result[1].fluid_data then
+            fluidData = json.decode(result[1].fluid_data)
+        end
+        
+        -- Repair the specific component
+        if component == 'tires' then
+            fluidData.tireWear = 0
+        elseif component == 'battery' then
+            fluidData.batteryLevel = 100
+        elseif component == 'gearbox' then
+            fluidData.gearBoxHealth = 100
+        elseif component == 'oil' then
+            fluidData.oilLevel = 100
+        elseif component == 'coolant' then
+            fluidData.coolantLevel = 100
+        elseif component == 'brake_fluid' then
+            fluidData.brakeFluidLevel = 100
+        elseif component == 'power_steering' then
+            fluidData.powerSteeringLevel = 100
+        end
+        
+        -- Update database
+        MySQL.update('UPDATE player_vehicles SET fluid_data = ? WHERE plate = ?', {
+            json.encode(fluidData),
+            plate
+        })
+        
+        return true
+    end
+    
+    return false
+end)
+
 print('[Advanced Mechanic] Server initialized successfully')

@@ -16,12 +16,16 @@ function FluidEffects.Start()
             vehicleState:set('brakeFluidLevel', data.brakeFluidLevel, true)
             vehicleState:set('transmissionFluidLevel', data.transmissionFluidLevel, true)
             vehicleState:set('powerSteeringLevel', data.powerSteeringLevel, true)
+            vehicleState:set('tireWear', data.tireWear or 0, true)
+            vehicleState:set('batteryLevel', data.batteryLevel or 100, true)
+            vehicleState:set('gearBoxHealth', data.gearBoxHealth or 100, true)
         end
     end, plate)
     
     effectsThread = CreateThread(function()
         local lastDegradation = 0
         local lastSync = 0
+        local lastMileage = 0
         
         while true do
             local vehicle = cache.vehicle
@@ -30,25 +34,34 @@ function FluidEffects.Start()
                 local vehicleState = Entity(vehicle).state
                 local currentTime = GetGameTimer()
                 
-                -- Get fluid levels
+                -- Get fluid and component levels
                 local brakeFluid = vehicleState.brakeFluidLevel or 100
                 local oilLevel = vehicleState.oilLevel or 100
                 local coolantLevel = vehicleState.coolantLevel or 100
                 local powerSteeringFluid = vehicleState.powerSteeringLevel or 100
+                local tireWear = vehicleState.tireWear or 0
+                local batteryLevel = vehicleState.batteryLevel or 100
+                local gearBoxHealth = vehicleState.gearBoxHealth or 100
+                local mileage = GetEntityCoords(vehicle).x + GetEntityCoords(vehicle).y -- Just as an example
                 
                 -- Apply effects
                 FluidEffects.ApplyBrakeEffect(vehicle, brakeFluid)
                 FluidEffects.ApplyEngineEffect(vehicle, oilLevel, coolantLevel)
                 FluidEffects.ApplySteeringEffect(vehicle, powerSteeringFluid)
+                FluidEffects.ApplyTireWearEffect(vehicle, tireWear)
+                FluidEffects.ApplyBatteryEffect(vehicle, batteryLevel)
+                FluidEffects.ApplyGearBoxEffect(vehicle, gearBoxHealth)
                 
-                -- Degradación automática cada 30 segundos
-                if currentTime - lastDegradation > 30000 then
+                -- Degradación automática cada 30 segundos y por kilometraje
+                if currentTime - lastDegradation  30000 or math.abs(mileage - lastMileage)  1 then
                     FluidEffects.DegradeFluidLevels(vehicle)
+                    FluidEffects.DegradeComponents(vehicle)
                     lastDegradation = currentTime
+                    lastMileage = mileage
                 end
                 
                 -- Sincronización con servidor cada 5 minutos
-                if currentTime - lastSync > 300000 then
+                if currentTime - lastSync  300000 then
                     FluidEffects.SyncWithServer(vehicle)
                     lastSync = currentTime
                 end
@@ -229,6 +242,219 @@ function FluidEffects.ApplySteeringEffect(vehicle, fluidLevel)
     end
 end
 
+function FluidEffects.ApplyTireWearEffect(vehicle, tireWear)
+    if tireWear > 80 then
+        -- Ruedas muy desgastadas - riesgo de explosión
+        if math.random(1, 1000) <= 5 then -- 0.5% de probabilidad
+            local tireIndex = math.random(0, 3)
+            SetVehicleTyreBurst(vehicle, tireIndex, false, 1000.0)
+            
+            lib.notify({
+                title = locale('tire_blowout'),
+                description = locale('tire_worn_out'),
+                type = 'error',
+                duration = 8000
+            })
+        end
+        
+        -- Reducir tracción
+        SetVehicleHandlingFloat(vehicle, 'CHandlingData', 'fTractionCurveMax', 0.7)
+        SetVehicleHandlingFloat(vehicle, 'CHandlingData', 'fTractionCurveMin', 0.5)
+        
+        if not Entity(vehicle).state.tireWearWarning then
+            Entity(vehicle).state:set('tireWearWarning', true, true)
+            lib.notify({
+                title = locale('tire_wear_critical'),
+                description = locale('replace_tires_soon'),
+                type = 'error',
+                duration = 10000
+            })
+        end
+    elseif tireWear > 60 then
+        -- Ruedas desgastadas - tracción reducida
+        SetVehicleHandlingFloat(vehicle, 'CHandlingData', 'fTractionCurveMax', 0.85)
+        SetVehicleHandlingFloat(vehicle, 'CHandlingData', 'fTractionCurveMin', 0.75)
+        
+        if not Entity(vehicle).state.tireWearWarning then
+            Entity(vehicle).state:set('tireWearWarning', true, true)
+            lib.notify({
+                title = locale('tire_wear_high'),
+                description = locale('consider_tire_replacement'),
+                type = 'warning',
+                duration = 8000
+            })
+        end
+    else
+        -- Ruedas en buen estado
+        SetVehicleHandlingFloat(vehicle, 'CHandlingData', 'fTractionCurveMax', 1.0)
+        SetVehicleHandlingFloat(vehicle, 'CHandlingData', 'fTractionCurveMin', 1.0)
+        Entity(vehicle).state:set('tireWearWarning', false, true)
+    end
+end
+
+function FluidEffects.ApplyBatteryEffect(vehicle, batteryLevel)
+    if batteryLevel < 20 then
+        -- Batería muy baja - riesgo de apagado
+        if math.random(1, 100) <= 10 then -- 10% de probabilidad cada segundo
+            SetVehicleEngineOn(vehicle, false, true, false)
+            
+            lib.notify({
+                title = locale('battery_dead'),
+                description = locale('vehicle_wont_start'),
+                type = 'error',
+                duration = 10000
+            })
+        end
+        
+        -- Luces más débiles
+        SetVehicleLightMultiplier(vehicle, 0.3)
+        
+        if not Entity(vehicle).state.batteryWarning then
+            Entity(vehicle).state:set('batteryWarning', true, true)
+            lib.notify({
+                title = locale('battery_critical'),
+                description = locale('charge_battery_soon'),
+                type = 'error',
+                duration = 8000
+            })
+        end
+    elseif batteryLevel < 40 then
+        -- Batería baja - luces débiles
+        SetVehicleLightMultiplier(vehicle, 0.7)
+        
+        if not Entity(vehicle).state.batteryWarning then
+            Entity(vehicle).state:set('batteryWarning', true, true)
+            lib.notify({
+                title = locale('battery_low'),
+                description = locale('battery_needs_attention'),
+                type = 'warning',
+                duration = 6000
+            })
+        end
+    else
+        -- Batería en buen estado
+        SetVehicleLightMultiplier(vehicle, 1.0)
+        Entity(vehicle).state:set('batteryWarning', false, true)
+    end
+end
+
+function FluidEffects.ApplyGearBoxEffect(vehicle, gearBoxHealth)
+    if gearBoxHealth < 30 then
+        -- Caja de cambios muy dañada
+        if math.random(1, 100) <= 5 then -- 5% de probabilidad
+            -- Cambio aleatorio de marcha
+            local randomGear = math.random(-1, 6)
+            SetVehicleGear(vehicle, randomGear)
+            
+            lib.notify({
+                title = locale('gearbox_failure'),
+                description = locale('gears_changing_randomly'),
+                type = 'error',
+                duration = 8000
+            })
+        end
+        
+        if not Entity(vehicle).state.gearBoxWarning then
+            Entity(vehicle).state:set('gearBoxWarning', true, true)
+            lib.notify({
+                title = locale('gearbox_critical'),
+                description = locale('transmission_failing'),
+                type = 'error',
+                duration = 10000
+            })
+        end
+    elseif gearBoxHealth < 60 then
+        -- Caja de cambios dañada - cambios lentos
+        if math.random(1, 200) <= 1 then -- Menor probabilidad de fallo
+            SetVehicleGear(vehicle, GetVehicleCurrentGear(vehicle)) -- Mantener marcha actual
+        end
+        
+        if not Entity(vehicle).state.gearBoxWarning then
+            Entity(vehicle).state:set('gearBoxWarning', true, true)
+            lib.notify({
+                title = locale('gearbox_worn'),
+                description = locale('gear_changes_slow'),
+                type = 'warning',
+                duration = 6000
+            })
+        end
+    else
+        -- Caja de cambios en buen estado
+        Entity(vehicle).state:set('gearBoxWarning', false, true)
+    end
+end
+
+function FluidEffects.DegradeComponents(vehicle)
+    local vehicleState = Entity(vehicle).state
+    local speed = GetEntitySpeed(vehicle) * 3.6
+    local engineHealth = GetVehicleEngineHealth(vehicle)
+    local bodyHealth = GetVehicleBodyHealth(vehicle)
+    
+    -- Desgaste de neumáticos basado en velocidad y superficie
+    local tireWearRate = 0.01 -- Base rate
+    if speed > 80 then
+        tireWearRate = tireWearRate * 2
+    end
+    if speed > 150 then
+        tireWearRate = tireWearRate * 3
+    end
+    
+    -- Superficie del terreno
+    local surfaceHash = GetVehicleWheelSurfaceMaterial(vehicle, 0)
+    if surfaceHash == GetHashKey('SAND') or surfaceHash == GetHashKey('ROCK') then
+        tireWearRate = tireWearRate * 1.5
+    end
+    
+    local currentTireWear = vehicleState.tireWear or 0
+    vehicleState:set('tireWear', math.min(100, currentTireWear + tireWearRate), true)
+    
+    -- Desgaste de batería
+    local batteryDrainRate = 0.02
+    if engineHealth < 800 then
+        batteryDrainRate = batteryDrainRate * 2
+    end
+    if speed == 0 and GetIsVehicleEngineRunning(vehicle) then
+        batteryDrainRate = batteryDrainRate * 1.5 -- Ralentí consume batería
+    end
+    
+    local currentBattery = vehicleState.batteryLevel or 100
+    vehicleState:set('batteryLevel', math.max(0, currentBattery - batteryDrainRate), true)
+    
+    -- Desgaste de caja de cambios
+    local gearBoxDamageRate = 0.01
+    if speed > 120 then
+        gearBoxDamageRate = gearBoxDamageRate * 2
+    end
+    if bodyHealth < 800 then
+        gearBoxDamageRate = gearBoxDamageRate * 1.5
+    end
+    
+    local currentGearBox = vehicleState.gearBoxHealth or 100
+    vehicleState:set('gearBoxHealth', math.max(0, currentGearBox - gearBoxDamageRate), true)
+end
+
+-- Función para detectar colisiones
+function FluidEffects.OnVehicleCollision(vehicle, damage)
+    local vehicleState = Entity(vehicle).state
+    
+    -- Daño a la batería por impacto
+    local batteryDamage = damage * 0.1
+    local currentBattery = vehicleState.batteryLevel or 100
+    vehicleState:set('batteryLevel', math.max(0, currentBattery - batteryDamage), true)
+    
+    -- Daño a la caja de cambios
+    local gearBoxDamage = damage * 0.15
+    local currentGearBox = vehicleState.gearBoxHealth or 100
+    vehicleState:set('gearBoxHealth', math.max(0, currentGearBox - gearBoxDamage), true)
+    
+    -- Daño a los neumáticos
+    if damage > 50 then
+        local tireDamage = damage * 0.2
+        local currentTireWear = vehicleState.tireWear or 0
+        vehicleState:set('tireWear', math.min(100, currentTireWear + tireDamage), true)
+    end
+end
+
 function FluidEffects.DegradeFluidLevels(vehicle)
     local vehicleState = Entity(vehicle).state
     local engineHealth = GetVehicleEngineHealth(vehicle)
@@ -317,6 +543,30 @@ function FluidEffects.Monitor()
         while true do
             Wait(600000) -- 10 minutos
             FluidEffects.CleanupMemory()
+        end
+    end)
+    
+    -- Thread de detección de colisiones
+    CreateThread(function()
+        local lastBodyHealth = {}
+        
+        while true do
+            if cache.vehicle and cache.seat == -1 then
+                local vehicle = cache.vehicle
+                local currentBodyHealth = GetVehicleBodyHealth(vehicle)
+                local plate = GetVehicleNumberPlateText(vehicle)
+                
+                if lastBodyHealth[plate] then
+                    local damage = lastBodyHealth[plate] - currentBodyHealth
+                    if damage > 20 then -- Colisión significativa
+                        FluidEffects.OnVehicleCollision(vehicle, damage)
+                    end
+                end
+                
+                lastBodyHealth[plate] = currentBodyHealth
+            end
+            
+            Wait(500) -- Check every 0.5 seconds
         end
     end)
 end

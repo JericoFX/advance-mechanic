@@ -179,16 +179,21 @@ function Shops.SpawnServiceVehicle(source, model, coords)
         Wait(10)
     end
     
-    -- Set vehicle properties
+  
     local plate = 'MECH' .. math.random(1000, 9999)
-    SetVehicleNumberPlateText(vehicle, plate)
+    lib.setVehicleProperties(vehicle, {
+        plate = plate,
+        bodyHealth = 1000.0,
+        engineHealth = 1000.0,
+        fuelLevel = 100.0
+    })
     
     -- Set owner
     SetPedIntoVehicle(GetPlayerPed(source), vehicle, -1)
     
     -- Give keys (assuming you have a key system)
     TriggerEvent('vehiclekeys:server:givekeys', source, plate)
-    
+
     return true
 end
 
@@ -206,6 +211,47 @@ end
 function Shops.GetEmployees(shopId)
     local query = 'SELECT * FROM mechanic_employees WHERE shop_id = ?'
     return MySQL.query.await(query, {shopId}) or {}
+end
+
+-- Change employee grade
+function Shops.ChangeEmployeeGrade(shopId, targetCitizenId, newGrade)
+    local query = 'UPDATE mechanic_employees SET grade = ? WHERE shop_id = ? AND citizenid = ?'
+    return MySQL.update.await(query, {newGrade, shopId, targetCitizenId}) > 0
+end
+
+-- Change employee wage
+function Shops.ChangeEmployeeWage(shopId, targetCitizenId, newWage)
+    local query = 'UPDATE mechanic_employees SET wage = ? WHERE shop_id = ? AND citizenid = ?'
+    return MySQL.update.await(query, {newWage, shopId, targetCitizenId}) > 0
+end
+
+-- Toggle payroll settings
+function Shops.TogglePayroll(shopId)
+    local shop = Shops.GetById(shopId)
+    if shop then
+        shop.payrollEnabled = not shop.payrollEnabled
+        local query = 'UPDATE mechanic_shops SET payrollEnabled = ? WHERE id = ?'
+        MySQL.update.await(query, {shop.payrollEnabled, shopId})
+        return true, shop.payrollEnabled
+    end
+    return false, nil
+end
+
+-- Clock in/out system
+function Shops.ClockIn(source)
+    local Player = QBCore.Functions.GetPlayer(source)
+    if not Player then return false end
+    
+    local query = 'UPDATE mechanic_employees SET on_duty = 1, last_clock_in = NOW() WHERE citizenid = ?'
+    return MySQL.update.await(query, {Player.PlayerData.citizenid}) > 0
+end
+
+function Shops.ClockOut(source)
+    local Player = QBCore.Functions.GetPlayer(source)
+    if not Player then return false end
+    
+    local query = 'UPDATE mechanic_employees SET on_duty = 0 WHERE citizenid = ?'
+    return MySQL.update.await(query, {Player.PlayerData.citizenid}) > 0
 end
 
 -- Callbacks
@@ -227,6 +273,60 @@ end)
 
 lib.callback.register('mechanic:server:spawnGarageVehicle', function(source, model, coords)
     return Shops.SpawnServiceVehicle(source, model, coords)
+end)
+
+-- Employee management callbacks
+lib.callback.register('mechanic:server:hireEmployee', function(source, shopId, targetCitizenId, grade, wage)
+    if Shops.AddEmployee(shopId, targetCitizenId, grade) then
+        Shops.ChangeEmployeeWage(shopId, targetCitizenId, wage)
+        return true, locale('employee_hired')
+    end
+    return false, locale('hire_failed')
+end)
+
+lib.callback.register('mechanic:server:changeEmployeeGrade', function(source, shopId, targetCitizenId, newGrade)
+    if Shops.ChangeEmployeeGrade(shopId, targetCitizenId, newGrade) then
+        return true, locale('grade_changed')
+    end
+    return false, locale('change_failed')
+end)
+
+lib.callback.register('mechanic:server:changeEmployeeWage', function(source, shopId, targetCitizenId, newWage)
+    if Shops.ChangeEmployeeWage(shopId, targetCitizenId, newWage) then
+        return true, locale('wage_changed')
+    end
+    return false, locale('change_failed')
+end)
+
+lib.callback.register('mechanic:server:fireEmployee', function(source, shopId, targetCitizenId)
+    if Shops.RemoveEmployee(shopId, targetCitizenId) then
+        return true, locale('employee_fired')
+    end
+    return false, locale('fire_failed')
+end)
+
+lib.callback.register('mechanic:server:getEmployees', function(source, shopId)
+    return Shops.GetEmployees(shopId)
+end)
+
+lib.callback.register('mechanic:server:togglePayroll', function(source, shopId)
+    return Shops.TogglePayroll(shopId)
+end)
+
+lib.callback.register('mechanic:server:getPayrollSettings', function(source, shopId)
+    local shop = Shops.GetById(shopId)
+    if shop then
+        return {enabled = shop.payrollEnabled, frequency = 'weekly', payment_day = 'friday'}
+    end
+    return nil
+end)
+
+lib.callback.register('mechanic:server:clockIn', function(source)
+    return Shops.ClockIn(source)
+end)
+
+lib.callback.register('mechanic:server:clockOut', function(source)
+    return Shops.ClockOut(source)
 end)
 
 -- Events

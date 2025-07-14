@@ -235,7 +235,7 @@ exports.ox_target:addGlobalVehicle({
 RegisterNetEvent('mechanic:client:syncVehicleProperties', function(netId, props)
     local vehicle = NetworkGetEntityFromNetworkId(netId)
     if DoesEntityExist(vehicle) then
-        exports.ox_lib:setVehicleProperties(vehicle, props)
+        lib.setVehicleProperties(vehicle, props)
     end
 end)
 

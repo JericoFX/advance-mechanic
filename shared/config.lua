@@ -1,5 +1,18 @@
 Config = {}
 
+-- Employee management settings
+Config.Employees = {
+    defaultWage = 15,
+    minWage = 10,
+    maxWage = 30,
+    permissions = {
+        [0] = {editWage = false, fire = false},
+        [1] = {editWage = true, fire = false},
+        [2] = {editWage = true, fire = true},
+        [3] = {editWage = true, fire = true}
+    }
+}
+
 -- Debug mode
 Config.Debug = false
 

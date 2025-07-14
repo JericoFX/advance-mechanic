@@ -52,3 +52,41 @@ ON DUPLICATE KEY UPDATE
     `name` = VALUES(`name`),
     `label` = VALUES(`label`),
     `salary` = VALUES(`salary`);
+
+-- Create mechanic employees table
+CREATE TABLE IF NOT EXISTS `mechanic_employees` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `shop_id` int(11) NOT NULL,
+  `citizenid` varchar(50) NOT NULL,
+  `name` varchar(100) DEFAULT NULL,
+  `grade` int(11) NOT NULL DEFAULT 0,
+  `wage` decimal(10,2) NOT NULL DEFAULT 15.00,
+  `hired_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `on_duty` tinyint(1) NOT NULL DEFAULT 0,
+  `last_clock_in` timestamp NULL DEFAULT NULL,
+  `total_hours` decimal(10,2) NOT NULL DEFAULT 0.00,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_employee_shop` (`shop_id`, `citizenid`),
+  KEY `idx_citizenid` (`citizenid`),
+  KEY `idx_shop_id` (`shop_id`),
+  CONSTRAINT `mechanic_employees_ibfk_1` FOREIGN KEY (`shop_id`) REFERENCES `mechanic_shops` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create employee schedules table
+CREATE TABLE IF NOT EXISTS `mechanic_schedules` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `employee_id` int(11) NOT NULL,
+  `day_of_week` int(11) NOT NULL,
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_employee_id` (`employee_id`),
+  CONSTRAINT `mechanic_schedules_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `mechanic_employees` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add payroll settings to mechanic shops
+ALTER TABLE `mechanic_shops` 
+  ADD COLUMN IF NOT EXISTS `payrollEnabled` tinyint(1) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS `payment_frequency` varchar(20) DEFAULT 'weekly',
+  ADD COLUMN IF NOT EXISTS `payment_day` varchar(20) DEFAULT 'friday';

@@ -29,6 +29,22 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
   - **Real-time Sync**: Database synchronization every 5 minutes
   - **Memory Management**: Automatic cleanup of unused vehicle data
   - **Anti-cheat Protection**: Server-side validation of fluid levels
+- **Enhanced Component Degradation System**:
+  - **Tire Wear**: Progressive wear based on speed, surface type, and mileage
+    - High speed driving increases wear rate significantly
+    - Different surfaces (sand, rock) cause accelerated wear
+    - Critical wear levels cause tire blowouts and reduced traction
+  - **Battery System**: Realistic battery drain and electrical effects
+    - Drains faster with damaged engine or during idle
+    - Low battery causes dimmed lights and random engine shutdowns
+    - Critical levels prevent vehicle startup
+  - **Transmission/Gearbox**: Complex transmission wear simulation
+    - High speed and body damage accelerate wear
+    - Worn gearbox causes sluggish gear changes
+    - Critical damage results in random gear shifts
+  - **Collision Impact**: Vehicle collisions damage multiple components
+    - Battery, gearbox, and tire wear increase with impact severity
+    - Realistic damage distribution based on collision force
 
 ## Dependencies
 
@@ -45,6 +61,16 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 4. Import `fluid_data_migration.sql` to add fluid data columns
 5. Configure the resource in `config.lua`
 6. Restart your server
+
+## Recent Updates
+
+- **Enhanced Shop Creation**: Interactive raycast-based point placement with visual markers
+- **ox_lib Integration**: Replaced legacy exports with modern ox_lib points system
+- **Vehicle Cache System**: Implemented `lib.onCache` for efficient vehicle state monitoring
+- **Security Improvements**: All admin commands now execute server-side with proper validation
+- **Property Management**: Fixed vehicle property handling using correct ox_lib syntax
+- **Localization**: Complete localization support with ox_lib locale system
+- **Zone Management**: Improved zone creation and management with proper cleanup
 
 ## Database Setup
 
