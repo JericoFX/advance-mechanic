@@ -15,6 +15,7 @@ local Tuning = require 'client.modules.tuning'
 local Billing = require 'client.modules.billing'
 local Diagnostic = require 'client.modules.diagnostic'
 local FluidEffects = require 'client.modules.fluid_effects'
+local VisualEffects = require 'client.modules.visual_effects'
 
 -- Initialize player loaded state
 local playerLoaded = false

@@ -1,4 +1,5 @@
 local Tuning = {}
+local VisualEffects = require 'client.modules.visual_effects'
 
 local performanceMods = {
     [11] = {label = locale('engine'), maxLevel = 4, basePrice = 5000},
@@ -99,6 +100,19 @@ function Tuning.PerformanceMenu(vehicle)
 end
 
 function Tuning.ApplyPerformanceMod(vehicle, modType, level, price)
+    -- Check if hood needs to be open for engine mods
+    if modType == 11 and not VisualEffects.CheckHoodOpen(vehicle) then
+        lib.notify({
+            title = locale('open_hood_first'),
+            description = locale('hood_required_for_engine'),
+            type = 'error'
+        })
+        return
+    end
+    
+    -- Apply visual effects for performance mods
+    local effects = VisualEffects.WeldingEffect(vehicle, 10000)
+    
     local progress = lib.progressBar({
         duration = 10000,
         label = locale('installing_upgrade'),
@@ -107,10 +121,6 @@ function Tuning.ApplyPerformanceMod(vehicle, modType, level, price)
         disable = {
             move = true,
             car = true
-        },
-        anim = {
-            dict = 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@',
-            clip = 'machinic_loop_mechandplayer'
         }
     })
     
@@ -233,6 +243,11 @@ function Tuning.ModMenu(vehicle, modType, label, basePrice)
 end
 
 function Tuning.ApplyVisualMod(vehicle, modType, modIndex, price)
+    -- Apply visual effects
+    local coords = GetEntityCoords(vehicle)
+    local offset = GetOffsetFromEntityInWorldCoords(vehicle, 0.0, 2.0, 0.0)
+    local sparkEffect = VisualEffects.CreateParticleAtCoords('sparks', offset, 5000)
+    
     local progress = lib.progressBar({
         duration = 5000,
         label = locale('installing_part'),

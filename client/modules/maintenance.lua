@@ -1,7 +1,18 @@
 local Maintenance = {}
+local VisualEffects = require 'client.modules.visual_effects'
 
 function Maintenance.Perform(vehicle, item)
-    if not DoesEntityExist(vehicle) then return end
+if not DoesEntityExist(vehicle) then return end
+    
+    -- Ensure the hood is open for engine-related maintenance
+    if (item == 'oil' or item == 'coolant' or item == 'battery') and not VisualEffects.CheckHoodOpen(vehicle) then
+        lib.notify({
+            title = locale('open_hood_first'),
+            description = locale('hood_must_be_open_for_engine'),
+            type = 'error'
+        })
+        return
+    end
     
     local maintenanceItem = Config.MaintenanceItems[item]
     if not maintenanceItem then
@@ -20,7 +31,13 @@ function Maintenance.Perform(vehicle, item)
         return
     end
     
-    lib.progressBar({
+    -- Start visual effects
+    local effects = nil
+    if item == 'oil' or item == 'coolant' then
+        effects = VisualEffects.EngineRepairEffect(vehicle, Config.Animations.repair.duration)
+    end
+    
+    local progress = lib.progressBar({
         duration = Config.Animations.repair.duration,
         label = string.format(locale('performing_maintenance'), maintenanceItem.label),
         useWhileDead = false,
@@ -35,16 +52,18 @@ function Maintenance.Perform(vehicle, item)
         }
     })
     
-    -- Simulated effect of maintenance
-    local health = GetVehicleEngineHealth(vehicle) + maintenanceItem.restores
-    SetVehicleEngineHealth(vehicle, math.min(health, 1000.0))
-    
-    exports.ox_inventory:RemoveItem(maintenanceItem.item, 1)
-    
-    lib.notify({
-        title = string.format(locale('maintenance_complete'), maintenanceItem.label),
-        type = 'success'
-    })
+    if progress then
+        -- Simulated effect of maintenance
+        local health = GetVehicleEngineHealth(vehicle) + maintenanceItem.restores
+        SetVehicleEngineHealth(vehicle, math.min(health, 1000.0))
+        
+        exports.ox_inventory:RemoveItem(maintenanceItem.item, 1)
+        
+        lib.notify({
+            title = string.format(locale('maintenance_complete'), maintenanceItem.label),
+            type = 'success'
+        })
+    end
 end
 
 function Maintenance.RepairAll(vehicle)
@@ -60,6 +79,9 @@ function Maintenance.RepairAll(vehicle)
     })
     
     if alert == 'confirm' then
+        -- Apply welding effects for major repairs
+        local effects = VisualEffects.WeldingEffect(vehicle, 15000)
+        
         local progress = lib.progressBar({
             duration = 15000,
             label = locale('repairing_all_systems'),
@@ -68,10 +90,6 @@ function Maintenance.RepairAll(vehicle)
             disable = {
                 car = true,
                 move = true
-            },
-            anim = {
-                dict = Config.Animations.repair.dict,
-                clip = Config.Animations.repair.anim
             }
         })
         

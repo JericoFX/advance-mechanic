@@ -1,4 +1,5 @@
 local Inspection = {}
+local VisualEffects = require 'client.modules.visual_effects'
 local checkpoints = Config.Inspection.checkPoints
 local activeShops = {}
 
@@ -22,7 +23,16 @@ function Inspection.IsInMechanicShop(coords)
 end
 
 function Inspection.InspectOnLift(vehicle)
-    if not DoesEntityExist(vehicle) then return end
+if not DoesEntityExist(vehicle) then return end
+    
+    -- Ensure the hood is open for engine inspection
+    if not IsVehicleDoorFullyOpen(vehicle, 4) then -- 4 is the hood
+        lib.notify({
+            title = locale('open_hood_first'),
+            type = 'error'
+        })
+        return
+    end
     
     local vehicleState = Entity(vehicle).state
     if not vehicleState.onLift then
@@ -69,11 +79,27 @@ end
 function Inspection.PerformInspection(vehicle, isOnLift)
     if not DoesEntityExist(vehicle) then return end
     
+    -- Check if hood is open for better inspection
+    if not VisualEffects.CheckHoodOpen(vehicle) then
+        lib.notify({
+            title = locale('open_hood_recommended'),
+            description = locale('better_inspection_with_hood_open'),
+            type = 'info'
+        })
+    end
+    
     local plate = GetVehicleNumberPlateText(vehicle)
     local inspectionResults = {}
     local totalIssues = 0
     
     for name, checkpoint in pairs(checkpoints) do
+        -- Add visual effects for engine inspection
+        local effects = nil
+        if name == 'engine' and VisualEffects.CheckHoodOpen(vehicle) then
+            local enginePos = GetWorldPositionOfEntityBone(vehicle, GetEntityBoneIndexByName(vehicle, "engine"))
+            effects = VisualEffects.CreateParticleAtCoords('smoke', enginePos, 2000)
+        end
+        
         local progress = lib.progressBar({
             duration = isOnLift and Config.Animations.inspect.duration / 2 or Config.Animations.inspect.duration,
             label = locale('checking_part', checkpoint.label),

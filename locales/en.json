@@ -374,5 +374,20 @@
   "current_payment_day": "Current: %s",
   "payroll_updated": "Payroll Updated",
   "unknown_grade": "Unknown Grade",
-  "employee": "Employee"
+  "employee": "Employee",
+  "open_hood_first": "Open Hood First",
+  "hood_must_be_open": "The hood must be open to access the engine",
+  "hood_must_be_open_for_engine": "You must open the hood to work on engine components",
+  "hood_required_for_engine": "Engine modifications require the hood to be open",
+  "open_hood_recommended": "Open Hood Recommended",
+  "better_inspection_with_hood_open": "Open the hood for a more thorough inspection",
+  "engine": "Engine",
+  "brakes": "Brakes",
+  "transmission": "Transmission",
+  "suspension": "Suspension",
+  "armor": "Armor",
+  "health_status": "Health: %s%%",
+  "repair_all": "Repair All",
+  "repair_all_issues": "Repair all %s issues",
+  "checking_part": "Checking %s..."
 }
