@@ -119,32 +119,164 @@ ALTER TABLE player_vehicles ADD COLUMN IF NOT EXISTS fluid_data LONGTEXT DEFAULT
 Edit `config.lua` to customize:
 
 - Mechanic job name and grades
-- Vehicle service prices
-- Mission rewards
-- Part prices and requirements
-- Tow vehicle models
-- Service vehicle spawns
-
+- Vehicle service prices, including dynamic adjustments based on vehicle condition
+- Mission rewards structured with tiered objectives
+- Part prices and regulations as per supplier settings
+- Tow vehicle models configured for compatibility
+- Service vehicle spawns managed by zone and availability
+- Diagnostic menu settings using ox_lib for enhanced UI
 ## Usage
+
+### Shop Creation Process (Admin Only)
+
+#### Starting Shop Creation
+1. Use `/createshop` to start creating a new mechanic shop
+2. Enable freecam mode automatically activates for precise placement
+3. The system uses an interactive raycast-based point placement with visual markers
+
+#### Zone Placement Steps
+The creation process follows this specific order:
+
+1. **Shop Name Input**
+   - Enter a unique name for the mechanic shop
+   - Names must be 3-50 characters long
+
+2. **Management Zone**
+   - Press `E` to place the management point
+   - Visual marker shows exact placement location
+   - This zone handles: employee management, shop settings, financial overview
+
+3. **Parts Shop Zone**
+   - Navigate to desired location and press `E`
+   - Access point for purchasing parts and supplies
+   - Inventory management and supplier orders
+
+4. **Garage Zone**
+   - Place the garage access point
+   - Service vehicle storage and retrieval
+   - Company vehicle management
+
+5. **Lift Positions** (1-4 lifts per shop)
+   - Place each lift position carefully
+   - Consider vehicle access and workspace
+   - Each lift operates independently
+
+6. **Vehicle Spawn Points**
+   - Set multiple spawn locations for serviced vehicles
+   - Ensure clear path from lifts to spawn points
+   - System automatically finds available spots
+
+#### Visual Indicators During Creation
+- **Green Marker**: Valid placement location
+- **Red Marker**: Invalid or obstructed location
+- **Yellow Circle**: Current zone radius
+- **Blue Line**: Direction indicator for spawn points
 
 ### For Admins
 1. Use `/createshop` to start creating a new mechanic shop
-2. Follow the on-screen instructions to place zones:
-   - Management zone
-   - Parts shop zone
-   - Garage zone
-   - Lift positions (up to 4 per shop)
-   - Vehicle spawn points
+2. Follow the on-screen instructions to place zones. The system provides a raycast-based interface with visual markers to assist in placing zones accurately:
+   - Management zone: For shop settings and employee management.
+   - Parts Shop zone: For purchasing parts and supplies.
+   - Garage zone: For storing and retrieving service vehicles.
+   - Lift positions: Place up to 4 per shop for vehicle maintenance.
+   - Vehicle spawn points: Designate spots for newly serviced vehicles to appear.
 
 ### For Mechanics
-1. Use `/mechanicmenu` to access mechanic functions:
-   - **Inspect Vehicle**: Check vehicle damage and parts status
-     - In shop: Direct inspection when vehicle is on lift
-     - Outside shop: Requires toolbox item
-   - **Perform Maintenance**: Service vehicles (requires tools)
-   - **Paint Vehicle**: Customize vehicle colors (vehicle must be on lift)
-   - **Start Mission**: Begin repair missions for extra income
-   - **Tow Vehicle**: Attach/detach vehicles for towing
+
+#### Mechanic Menu System
+Access the main menu with `/mechanicmenu` - this opens an ox_lib context menu with color-coded options:
+
+##### 1. **Vehicle Inspection** 🔍
+- **Inside Shop**: Direct inspection when vehicle is on lift
+  - Displays comprehensive damage report
+  - Shows all fluid levels with color indicators:
+    - 🟢 Green: 70-100% (Good)
+    - 🟡 Yellow: 30-69% (Warning)
+    - 🔴 Red: 0-29% (Critical)
+  - Component wear status (tires, battery, transmission)
+  - Estimated repair costs and time
+  
+- **Outside Shop**: Portable inspection (requires `toolbox` item)
+  - Limited to visual damage assessment
+  - Basic fluid level checks
+  - Cannot perform repairs without shop equipment
+
+##### 2. **Perform Maintenance** 🔧
+Available services when vehicle is on lift:
+- **Oil Change**: Restores engine oil to 100%
+  - Requires: `engine_oil` item
+  - Duration: 10 seconds
+  - Prevents engine damage
+  
+- **Brake Service**: Refills brake fluid
+  - Requires: `brake_fluid` item
+  - Duration: 15 seconds
+  - Restores full braking power
+  
+- **Coolant Service**: Tops up cooling system
+  - Requires: `coolant` item
+  - Duration: 8 seconds
+  - Prevents overheating
+  
+- **Transmission Service**: Services gearbox
+  - Requires: `transmission_fluid` item
+  - Duration: 20 seconds
+  - Fixes gear shifting issues
+  
+- **Full Service**: Complete maintenance package
+  - Requires all fluid items
+  - Duration: 45 seconds
+  - Restores all systems to 100%
+
+##### 3. **Vehicle Customization** 🎨
+- **Paint Jobs**: Full color customization
+  - Primary, secondary, and pearl colors
+  - Custom RGB color picker
+  - Live preview before applying
+  
+- **Performance Tuning**: Engine and handling upgrades
+  - Engine (Level 0-4)
+  - Brakes (Level 0-3)
+  - Transmission (Level 0-3)
+  - Suspension (Level 0-4)
+  - Turbo installation
+  
+- **Visual Modifications**: Aesthetic upgrades
+  - Body kits and spoilers
+  - Wheels and tires
+  - Window tint
+  - Neon kits
+  - Custom plates
+
+##### 4. **Repair Missions** 📋
+Dynamic missions for extra income:
+- **Emergency Repairs**: Time-critical fixes
+  - Higher pay for faster completion
+  - Random vehicle types and damage
+  
+- **Scheduled Maintenance**: Regular service appointments
+  - Fixed pay rate
+  - Predictable work
+  
+- **Custom Orders**: Special modification requests
+  - Complex requirements
+  - Premium payments
+
+##### 5. **Towing Operations** 🚛
+- Compatible tow vehicles automatically detected
+- Attach/detach with simple controls
+- Physics-based towing system
+- Damage prevention during transport
+
+#### Menu Navigation
+- Use ⬆️⬇️ arrows or mouse to navigate
+- Press `Enter` or click to select
+- Press `Backspace` or `ESC` to go back
+- All menus use ox_lib's context system with:
+  - Icons for visual clarity
+  - Color coding for status
+  - Descriptive tooltips
+  - Progress bars for actions
 
 ### Shop Owners
 Shop owners have additional access to:
@@ -188,6 +320,112 @@ The lift system allows mechanics to:
 - Inspect vehicles directly from lift menu
 - Support multiple lifts per shop
 - Statebag synchronization for multiplayer
+
+## Technical Implementation
+
+### Point System (ox_lib)
+The resource uses ox_lib's point system for zone management:
+
+```lua
+-- Example of management zone creation
+local point = lib.points.new({
+    coords = vec3(x, y, z),
+    distance = 5,
+    onEnter = function()
+        -- Show interaction prompt
+        lib.showTextUI('[E] - Access Management')
+    end,
+    onExit = function()
+        -- Hide prompt
+        lib.hideTextUI()
+    end,
+    nearby = function(self)
+        -- Check for key press
+        if IsControlJustPressed(0, 38) then -- E key
+            openManagementMenu(shopId)
+        end
+    end
+})
+```
+
+### Zone Types and Properties
+
+#### Management Zone
+- **Radius**: 2.5 meters
+- **Interaction**: Press E to open menu
+- **Functions**: Employee management, shop settings, financial overview
+- **Permissions**: Shop owner only
+
+#### Parts Shop Zone
+- **Radius**: 3.0 meters
+- **Interaction**: Automatic menu on approach
+- **Functions**: Purchase parts, view stock, order supplies
+- **Permissions**: All mechanics
+
+#### Garage Zone
+- **Radius**: 5.0 meters
+- **Interaction**: Vehicle detection + menu
+- **Functions**: Store/retrieve service vehicles
+- **Permissions**: Shop employees
+
+#### Lift Zones
+- **Radius**: 4.0 meters (detection), 2.0 meters (control)
+- **Interaction**: Automatic vehicle detection
+- **Functions**: Raise/lower lift, lock vehicle
+- **Permissions**: One mechanic at a time
+
+### Shop Creation Workflow
+
+```lua
+-- Simplified creation flow
+1. Admin command triggers server event
+2. Server validates admin permissions
+3. Client enters creation mode:
+   - Enables freecam
+   - Starts raycast loop
+   - Shows placement markers
+4. Each zone placement:
+   - Raycast to ground
+   - Validate position
+   - Store coordinates
+5. Final creation:
+   - Send all data to server
+   - Server creates database entry
+   - Spawn zones for all players
+```
+
+### Data Storage Structure
+
+```json
+{
+  "zones": {
+    "management": {
+      "coords": {"x": 100.0, "y": 200.0, "z": 30.0},
+      "heading": 180.0
+    },
+    "parts": {
+      "coords": {"x": 105.0, "y": 205.0, "z": 30.0},
+      "heading": 90.0
+    },
+    "garage": {
+      "coords": {"x": 110.0, "y": 210.0, "z": 30.0},
+      "heading": 270.0
+    },
+    "lifts": [
+      {
+        "coords": {"x": 115.0, "y": 215.0, "z": 30.0},
+        "heading": 0.0
+      }
+    ],
+    "spawns": [
+      {
+        "coords": {"x": 120.0, "y": 220.0, "z": 30.0},
+        "heading": 180.0
+      }
+    ]
+  }
+}
+```
 
 ## Permissions
 
