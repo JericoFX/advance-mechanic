@@ -31,6 +31,7 @@ files {
 }
 
 dependencies {
+    'advance-manager',
     'ox_lib',
     'oxmysql',
     'ox_inventory',

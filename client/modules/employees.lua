@@ -3,14 +3,15 @@ local Employees = {}
 function Employees.OpenManagementMenu(shop)
     local playerData = QBCore.Functions.GetPlayerData()
     
-    if not shop.owner or shop.owner ~= playerData.citizenid then
-        if playerData.job.grade < Config.BossGrade then
-            lib.notify({
-                title = locale('not_shop_owner'),
-                type = 'error'
-            })
-            return
-        end
+    -- Verificar permisos usando advance-manager
+    local hasPermission = lib.callback.await('mechanic:server:hasEmployeePermission', false, shop.id, 'manage_employees')
+    
+    if not hasPermission then
+        lib.notify({
+            title = locale('no_permission'),
+            type = 'error'
+        })
+        return
     end
     
     local employees = lib.callback.await('mechanic:server:getEmployees', false, shop.id)

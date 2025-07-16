@@ -6,10 +6,10 @@ Config.Employees = {
     minWage = 10,
     maxWage = 30,
     permissions = {
-        [0] = {editWage = false, fire = false},
-        [1] = {editWage = true, fire = false},
-        [2] = {editWage = true, fire = true},
-        [3] = {editWage = true, fire = true}
+        [0] = {editWage = false, fire = false, manage_employees = false},
+        [1] = {editWage = true, fire = false, manage_employees = false},
+        [2] = {editWage = true, fire = true, manage_employees = false},
+        [3] = {editWage = true, fire = true, manage_employees = true}
     }
 }
 

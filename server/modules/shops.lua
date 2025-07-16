@@ -1,5 +1,7 @@
 local Shops = {}
 local Database = require 'server.modules.database'
+local Business = require 'server.modules.business'
+local QBCore = exports['qb-core']:GetCoreObject()
 local shopCache = {}
 
 -- Load all shops from database
@@ -199,30 +201,25 @@ end
 
 -- Employee management
 function Shops.AddEmployee(shopId, targetCitizenId, grade)
-    local query = 'INSERT INTO mechanic_employees (shop_id, citizenid, grade) VALUES (?, ?, ?)'
-    return MySQL.insert.await(query, {shopId, targetCitizenId, grade}) > 0
+    return Business.hireEmployee(shopId, targetCitizenId, grade)
 end
 
 function Shops.RemoveEmployee(shopId, targetCitizenId)
-    local query = 'DELETE FROM mechanic_employees WHERE shop_id = ? AND citizenid = ?'
-    return MySQL.update.await(query, {shopId, targetCitizenId}) > 0
+    return Business.fireEmployee(shopId, targetCitizenId)
 end
 
 function Shops.GetEmployees(shopId)
-    local query = 'SELECT * FROM mechanic_employees WHERE shop_id = ?'
-    return MySQL.query.await(query, {shopId}) or {}
+    return Business.getBusinessEmployees(shopId)
 end
 
 -- Change employee grade
 function Shops.ChangeEmployeeGrade(shopId, targetCitizenId, newGrade)
-    local query = 'UPDATE mechanic_employees SET grade = ? WHERE shop_id = ? AND citizenid = ?'
-    return MySQL.update.await(query, {newGrade, shopId, targetCitizenId}) > 0
+    return Business.updateEmployeeGrade(shopId, targetCitizenId, newGrade)
 end
 
 -- Change employee wage
 function Shops.ChangeEmployeeWage(shopId, targetCitizenId, newWage)
-    local query = 'UPDATE mechanic_employees SET wage = ? WHERE shop_id = ? AND citizenid = ?'
-    return MySQL.update.await(query, {newWage, shopId, targetCitizenId}) > 0
+    return Business.updateEmployeeWage(shopId, targetCitizenId, newWage)
 end
 
 -- Toggle payroll settings
@@ -276,12 +273,13 @@ lib.callback.register('mechanic:server:spawnGarageVehicle', function(source, mod
 end)
 
 -- Employee management callbacks
-lib.callback.register('mechanic:server:hireEmployee', function(source, shopId, targetCitizenId, grade, wage)
-    if Shops.AddEmployee(shopId, targetCitizenId, grade) then
-        Shops.ChangeEmployeeWage(shopId, targetCitizenId, wage)
-        return true, locale('employee_hired')
+lib.callback.register('mechanic:server:hireEmployee', function(source, shopId, targetId, grade, wage)
+    local success, message = Shops.AddEmployee(shopId, targetId, grade)
+    if success then
+        -- El wage se establece en el Business.hireEmployee
+        return true, message or locale('employee_hired')
     end
-    return false, locale('hire_failed')
+    return false, message or locale('hire_failed')
 end)
 
 lib.callback.register('mechanic:server:changeEmployeeGrade', function(source, shopId, targetCitizenId, newGrade)
@@ -327,6 +325,28 @@ end)
 
 lib.callback.register('mechanic:server:clockOut', function(source)
     return Shops.ClockOut(source)
+end)
+
+-- Verificar permisos de empleados
+lib.callback.register('mechanic:server:hasEmployeePermission', function(source, shopId, permission)
+    local Player = QBCore.Functions.GetPlayer(source)
+    if not Player then return false end
+    
+    local citizenid = Player.PlayerData.citizenid
+    local rank = Business.getEmployeeRank(citizenid, shopId)
+    
+    -- Verificar si es dueño o jefe (rank 4)
+    if rank >= Config.BossGrade then
+        return true
+    end
+    
+    -- Verificar permisos específicos por grade
+    local permissions = Config.Employees.permissions[rank]
+    if permissions and permissions[permission] then
+        return true
+    end
+    
+    return false
 end)
 
 -- Events
