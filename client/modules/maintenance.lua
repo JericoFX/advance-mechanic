@@ -51,12 +51,16 @@ if not DoesEntityExist(vehicle) then return end
             clip = Config.Animations.repair.anim
         }
     })
-    
+
+    if effects and effects.stop then
+        effects.stop()
+    end
+
     if progress then
         -- Simulated effect of maintenance
         local health = GetVehicleEngineHealth(vehicle) + maintenanceItem.restores
         SetVehicleEngineHealth(vehicle, math.min(health, 1000.0))
-        
+
         exports.ox_inventory:RemoveItem(maintenanceItem.item, 1)
         
         lib.notify({

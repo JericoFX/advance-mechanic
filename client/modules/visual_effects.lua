@@ -187,27 +187,113 @@ function VisualEffects.WeldingEffect(vehicle, duration)
 end
 
 function VisualEffects.EngineRepairEffect(vehicle, duration)
-    local coords = GetEntityCoords(vehicle)
-    local enginePos = GetWorldPositionOfEntityBone(vehicle, GetEntityBoneIndexByName(vehicle, "engine"))
-    
     -- Play engine repair animation
     local prop = VisualEffects.PlayAnimation('engine_repair', duration)
-    
-    -- Create occasional sparks
-    local sparkInterval = SetInterval(function()
-        VisualEffects.CreateParticleAtCoords('sparks', enginePos, 500)
-    end, 2000)
-    
-    -- Clean up after duration
-    SetTimeout(duration, function()
+
+    local active = true
+    local sparkTicker
+    local sparkLoopTimeout
+    local activeSparkHandles = {}
+
+    local function getEngineCoords()
+        local boneIndex = GetEntityBoneIndexByName(vehicle, "engine")
+        if boneIndex ~= -1 then
+            local coords = GetWorldPositionOfEntityBone(vehicle, boneIndex)
+            if coords then
+                return coords
+            end
+        end
+
+        local vehicleCoords = GetEntityCoords(vehicle)
+        return vec3(vehicleCoords.x, vehicleCoords.y, vehicleCoords.z + 0.5)
+    end
+
+    local function spawnSpark()
+        if not active then return end
+
+        local coords = getEngineCoords()
+        if not coords then return end
+
+        local handle = VisualEffects.CreateParticleAtCoords('sparks', coords, particleEffects.sparks.duration)
+        if handle then
+            activeSparkHandles[#activeSparkHandles + 1] = handle
+
+            SetTimeout(particleEffects.sparks.duration or 500, function()
+                for index = #activeSparkHandles, 1, -1 do
+                    if activeSparkHandles[index] == handle then
+                        table.remove(activeSparkHandles, index)
+                        break
+                    end
+                end
+            end)
+        end
+    end
+
+    local function stopSparkLoop()
+        if sparkTicker and sparkTicker.forceEnd then
+            sparkTicker:forceEnd()
+        end
+
+        if sparkLoopTimeout then
+            ClearTimeout(sparkLoopTimeout)
+        end
+
+        sparkTicker = nil
+        sparkLoopTimeout = nil
+    end
+
+    local function cleanup()
+        if not active then return end
+        active = false
+
+        stopSparkLoop()
+
+        for index = #activeSparkHandles, 1, -1 do
+            local handle = activeSparkHandles[index]
+            if handle then
+                StopParticleFxLooped(handle, false)
+            end
+            activeSparkHandles[index] = nil
+        end
+
         if prop then
             DeleteObject(prop)
+            prop = nil
         end
+
         VisualEffects.StopAnimation()
-        ClearInterval(sparkInterval)
-    end)
-    
-    return prop
+    end
+
+    spawnSpark()
+
+    if lib and lib.timer then
+        sparkTicker = lib.timer(2000, function()
+            if not active then
+                stopSparkLoop()
+                return
+            end
+
+            spawnSpark()
+        end)
+    else
+        local function scheduleNextSpark()
+            if not active then return end
+
+            spawnSpark()
+            sparkLoopTimeout = SetTimeout(2000, scheduleNextSpark)
+        end
+
+        sparkLoopTimeout = SetTimeout(2000, scheduleNextSpark)
+    end
+
+    if duration and duration > 0 then
+        SetTimeout(duration, cleanup)
+    end
+
+    return {
+        prop = prop,
+        stop = cleanup
+    }
 end
 
 function VisualEffects.OilLeakEffect(vehicle)
