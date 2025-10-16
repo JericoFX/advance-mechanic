@@ -17,6 +17,43 @@ local Diagnostic = require 'client.modules.diagnostic'
 local FluidEffects = require 'client.modules.fluid_effects'
 local VisualEffects = require 'client.modules.visual_effects'
 
+local function resolveTowVehicleConfig(vehicle)
+    if not vehicle then return nil end
+
+    local model = GetEntityModel(vehicle)
+    local displayName = GetDisplayNameFromVehicleModel(model)
+    local displayNameLower = displayName and string.lower(displayName) or nil
+
+    for name, towConfig in pairs(Config.Towing.vehicles) do
+        local configModel = towConfig.model
+        if configModel then
+            local configHash = type(configModel) == 'number' and configModel or GetHashKey(configModel)
+            if configHash == model then
+                return towConfig, name
+            end
+
+            if displayNameLower and type(configModel) == 'string' and string.lower(configModel) == displayNameLower then
+                return towConfig, name
+            end
+        end
+
+        if towConfig.models then
+            for _, alias in ipairs(towConfig.models) do
+                local aliasHash = type(alias) == 'number' and alias or GetHashKey(alias)
+                if aliasHash == model then
+                    return towConfig, name
+                end
+
+                if displayNameLower and type(alias) == 'string' and string.lower(alias) == displayNameLower then
+                    return towConfig, name
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
 -- Initialize player loaded state
 local playerLoaded = false
 
@@ -145,13 +182,12 @@ lib.registerContext({
             icon = 'fas fa-truck',
             onSelect = function()
                 if cache.vehicle then
-                    local model = GetEntityModel(cache.vehicle)
-                    local modelName = GetDisplayNameFromVehicleModel(model)
-                    
-                    if Config.Towing.vehicles[modelName] then
+                    local towConfig = resolveTowVehicleConfig(cache.vehicle)
+
+                    if towConfig then
                         local targetVehicle = lib.getClosestVehicle(GetEntityCoords(cache.ped), 10.0, false)
                         if targetVehicle then
-                            Towing.AttachVehicle(cache.vehicle, targetVehicle)
+                            Towing.AttachVehicle(cache.vehicle, targetVehicle, towConfig)
                         else
                             lib.notify({
                                 title = locale('no_vehicle_to_tow'),
