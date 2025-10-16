@@ -53,7 +53,9 @@ function FluidEffects.Start()
                 FluidEffects.ApplyGearBoxEffect(vehicle, gearBoxHealth)
                 
                 -- Degradación automática cada 30 segundos y por kilometraje
-                if currentTime - lastDegradation  30000 or math.abs(mileage - lastMileage)  1 then
+                if currentTime - lastDegradation >= 30000 or math.abs(mileage - lastMileage) >= 1 then
+                if currentTime - lastSync >= 300000 then
+ 1 then
                     FluidEffects.DegradeFluidLevels(vehicle)
                     FluidEffects.DegradeComponents(vehicle)
                     lastDegradation = currentTime
