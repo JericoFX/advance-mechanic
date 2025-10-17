@@ -56,7 +56,7 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 ## Installation
 
 1. Download and extract the resource to your resources folder
-2. Add `ensure advanced-mechanic` to your server.cfg
+2. Add `ensure advance-mechanic` to your server.cfg
 3. Import the SQL file to your database
 4. Import `fluid_data_migration.sql` to add fluid data columns
 5. Configure the resource in `config.lua`
