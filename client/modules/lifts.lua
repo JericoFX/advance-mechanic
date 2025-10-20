@@ -246,7 +246,7 @@ AddStateBagChangeHandler('liftMoving', nil, function(bagName, key, value, reserv
     if not entity or entity == 0 then return end
     
     local vehicleState = Entity(entity).state
-    if vehicleState.shopId == activeLift?.shopId and vehicleState.liftId == activeLift?.id then
+    if activeLift and vehicleState.shopId == activeLift.shopId and vehicleState.liftId == activeLift.id then
         -- Another player is controlling this lift
         lib.notify({
             title = locale('lift_in_use'),
