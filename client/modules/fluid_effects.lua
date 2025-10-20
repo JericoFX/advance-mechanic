@@ -54,16 +54,15 @@ function FluidEffects.Start()
                 
                 -- Degradación automática cada 30 segundos y por kilometraje
                 if currentTime - lastDegradation >= 30000 or math.abs(mileage - lastMileage) >= 1 then
-                if currentTime - lastSync >= 300000 then
- 1 then
                     FluidEffects.DegradeFluidLevels(vehicle)
                     FluidEffects.DegradeComponents(vehicle)
                     lastDegradation = currentTime
                     lastMileage = mileage
                 end
-                
+
                 -- Sincronización con servidor cada 5 minutos
-                if currentTime - lastSync  300000 then
+                if currentTime - lastSync >= 300000 then
+ 300000 then
                     FluidEffects.SyncWithServer(vehicle)
                     lastSync = currentTime
                 end
