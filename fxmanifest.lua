@@ -15,6 +15,7 @@ shared_scripts {
 
 client_scripts {
     'client/modules/*.lua',
+    'client/modules/fluid/*.lua',
     'client/modules/tuning.lua',
     'client/modules/billing.lua',
     'client/init.lua'
