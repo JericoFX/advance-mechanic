@@ -142,22 +142,35 @@ function Billing.AddLaborDialog()
 end
 
 function Billing.AddPartDialog()
+    local partOptions = {}
+
+    for key, item in pairs(Config.MaintenanceItems) do
+        local unitPrice = math.floor((item.price or 100) * Config.Economy.partMarkup)
+        table.insert(partOptions, {
+            label = item.label,
+            value = ('maintenance:%s'):format(key),
+            description = locale('price_format', unitPrice)
+        })
+    end
+
+    for key, part in pairs(Config.VehicleParts) do
+        local unitPrice = math.floor(part.price * Config.Economy.partMarkup)
+        table.insert(partOptions, {
+            label = part.label,
+            value = ('part:%s'):format(key),
+            description = locale('price_format', unitPrice)
+        })
+    end
+
+    table.sort(partOptions, function(a, b)
+        return a.label < b.label
+    end)
+
     local input = lib.inputDialog(locale('add_part'), {
         {
             type = 'select',
             label = locale('part_type'),
-            options = {
-                {label = locale('engine_oil'), value = 'engine_oil'},
-                {label = locale('brake_fluid'), value = 'brake_fluid'},
-                {label = locale('coolant'), value = 'coolant'},
-                {label = locale('car_battery'), value = 'car_battery'},
-                {label = locale('car_door'), value = 'car_door'},
-                {label = locale('car_hood'), value = 'car_hood'},
-                {label = locale('car_trunk'), value = 'car_trunk'},
-                {label = locale('car_wheel'), value = 'car_wheel'},
-                {label = locale('car_window'), value = 'car_window'},
-                {label = locale('car_bumper'), value = 'car_bumper'}
-            },
+            options = partOptions,
             required = true
         },
         {
@@ -169,30 +182,66 @@ function Billing.AddPartDialog()
             required = true
         }
     })
-    
-    if input then
-        local partConfig = Config.VehicleParts[input[1]] or Config.MaintenanceItems[input[1]]
-        if partConfig then
-            local partItem = {
-                type = 'part',
-                label = partConfig.label,
-                quantity = input[2],
-                price = partConfig.price * Config.Economy.partMarkup,
-                total = (partConfig.price * Config.Economy.partMarkup) * input[2]
-            }
-            
-            table.insert(currentInvoice.items, partItem)
-            currentInvoice.parts = currentInvoice.parts + partItem.total
-            currentInvoice.total = currentInvoice.labor + currentInvoice.parts
-            
-            lib.notify({
-                title = locale('part_added'),
-                type = 'success'
-            })
-            
-            Billing.OpenInvoiceMenu()
-        end
+
+    if not input then return end
+
+    local selection = input[1]
+    local quantity = input[2]
+    local category, key = selection:match('([^:]+):(.+)')
+
+    if not category or not key then
+        lib.notify({
+            title = locale('invalid_item'),
+            type = 'error'
+        })
+        return
     end
+
+    local partConfig
+    local unitPrice
+
+    if category == 'maintenance' then
+        partConfig = Config.MaintenanceItems[key]
+        if not partConfig then
+            lib.notify({
+                title = locale('invalid_item'),
+                type = 'error'
+            })
+            return
+        end
+
+        unitPrice = math.floor((partConfig.price or 100) * Config.Economy.partMarkup)
+    else
+        partConfig = Config.VehicleParts[key]
+        if not partConfig then
+            lib.notify({
+                title = locale('invalid_item'),
+                type = 'error'
+            })
+            return
+        end
+
+        unitPrice = math.floor(partConfig.price * Config.Economy.partMarkup)
+    end
+
+    local partItem = {
+        type = 'part',
+        label = partConfig.label,
+        quantity = quantity,
+        price = unitPrice,
+        total = unitPrice * quantity
+    }
+
+    table.insert(currentInvoice.items, partItem)
+    currentInvoice.parts = currentInvoice.parts + partItem.total
+    currentInvoice.total = currentInvoice.labor + currentInvoice.parts
+
+    lib.notify({
+        title = locale('part_added'),
+        type = 'success'
+    })
+
+    Billing.OpenInvoiceMenu()
 end
 
 function Billing.SendInvoice()

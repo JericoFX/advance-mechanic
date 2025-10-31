@@ -81,10 +81,10 @@ Config.Inspection = {
 
 -- Maintenance items
 Config.MaintenanceItems = {
-    oil = {item = 'engine_oil', label = 'Engine Oil', restores = 100},
-    brakefluid = {item = 'brake_fluid', label = 'Brake Fluid', restores = 100},
-    coolant = {item = 'coolant', label = 'Coolant', restores = 100},
-    battery = {item = 'car_battery', label = 'Car Battery', restores = 100}
+    oil = {item = 'engine_oil', label = 'Engine Oil', restores = 100, price = 100},
+    brakefluid = {item = 'brake_fluid', label = 'Brake Fluid', restores = 100, price = 100},
+    coolant = {item = 'coolant', label = 'Coolant', restores = 100, price = 100},
+    battery = {item = 'car_battery', label = 'Car Battery', restores = 100, price = 100}
 }
 
 -- Vehicle parts
