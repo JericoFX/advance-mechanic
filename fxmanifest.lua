@@ -2,7 +2,7 @@ fx_version 'cerulean'
 game 'gta5'
 lua54 'yes'
 
-author 'Advanced Mechanic System'
+author 'JericoFX'
 description 'Complete mechanic job with realistic damage, inspection, and management'
 version '1.0.0'
 
@@ -32,7 +32,7 @@ files {
 }
 
 dependencies {
-    'advance-manager',
+    --'advance-manager',
     'ox_lib',
     'oxmysql',
     'ox_inventory',
