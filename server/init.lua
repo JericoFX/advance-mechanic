@@ -40,7 +40,7 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
     
-    -- Add inspection_data column to player_vehicles if not exists
+    -- Add inspection_data and props columns to player_vehicles if not exists
     MySQL.query([[
         ALTER TABLE `player_vehicles` 
         ADD COLUMN IF NOT EXISTS `inspection_data` longtext DEFAULT NULL,
