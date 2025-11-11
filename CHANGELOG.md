@@ -6,3 +6,4 @@
 - Updated the fluid effects controller to use cache-driven start/stop logic and reduce idle processing while the player is not driving.
 ### Fixed
 - Restored the billing menu part selector by sourcing maintenance and part pricing from configuration data, allowing invoices to include all service items without errors.
+- Renamed the server-side vehicle property sync event to `mechanic:server:syncVehicleProperties` so it no longer intercepts the client handler and continues forwarding updates with `TriggerClientEvent`.

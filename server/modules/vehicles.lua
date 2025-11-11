@@ -274,11 +274,8 @@ RegisterNetEvent('mechanic:server:repairVehiclePart', function(plate, part, amou
 end)
 
 -- Sync vehicle properties to clients
-RegisterNetEvent('mechanic:client:syncVehicleProperties', function(netId, props)
-    local vehicle = NetworkGetEntityFromNetworkId(netId)
-    if DoesEntityExist(vehicle) then
-        exports.ox_lib:setVehicleProperties(vehicle, props)
-    end
+RegisterNetEvent('mechanic:server:syncVehicleProperties', function(netId, props)
+    TriggerClientEvent('mechanic:client:syncVehicleProperties', -1, netId, props)
 end)
 
 -- Sincronización de niveles de fluidos
