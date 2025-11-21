@@ -91,7 +91,7 @@ function Lifts.CreateZones(shops)
                     
                     if cache.vehicle then
                         local vehicleState = Entity(cache.vehicle).state
-                        if vehicleState.onLift and not vehicleState.liftHeight or vehicleState.liftHeight == 0 then
+                        if vehicleState.onLift and (not vehicleState.liftHeight or vehicleState.liftHeight == 0) then
                             vehicleState:set('onLift', false, true)
                             vehicleState:set('liftId', nil, true)
                             vehicleState:set('shopId', nil, true)
@@ -239,8 +239,8 @@ function Lifts.LockVehicle(vehicle, locked)
 end
 
 -- Watch for other players moving vehicles on lifts
-AddStateBagChangeHandler('liftMoving', nil, function(bagName, key, value, reserved, replicated)
-    if not value or reserved then return end
+AddStateBagChangeHandler('liftMoving', nil, function(bagName, key, value, _reserved, replicated)
+    if not value or not replicated then return end
     
     local entity = GetEntityFromStateBagName(bagName)
     if not entity or entity == 0 then return end
