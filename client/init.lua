@@ -1,5 +1,14 @@
--- Initialize QBCore
 QBCore = exports[Config.Framework.resourceName]:GetCoreObject()
+
+local function getPlayerJob()
+    local playerData = QBCore.Functions.GetPlayerData()
+    return playerData and playerData.job
+end
+
+local function isMechanic()
+    local job = getPlayerJob()
+    return job and job.name == Config.JobName
+end
 
 -- Load modules
 local Inspection = require 'client.modules.inspection'
@@ -213,7 +222,9 @@ lib.registerContext({
 
 -- Event to open mechanic menu from server command
 RegisterNetEvent('mechanic:client:openMenu', function()
-    lib.showContext('mechanic_main_menu')
+    if isMechanic() then
+        lib.showContext('mechanic_main_menu')
+    end
 end)
 
 -- Keybind for mechanic menu
@@ -222,8 +233,7 @@ lib.addKeybind({
     description = locale('open_mechanic_menu'),
     defaultKey = 'F6',
     onPressed = function()
-        local playerData = QBCore.Functions.GetPlayerData()
-        if playerData.job.name == Config.JobName then
+        if isMechanic() then
             lib.showContext('mechanic_main_menu')
         end
     end
@@ -236,8 +246,7 @@ exports.ox_target:addGlobalVehicle({
         icon = 'fas fa-oil-can',
         label = locale('perform_maintenance'),
         canInteract = function(entity, distance, coords, name)
-            local playerData = QBCore.Functions.GetPlayerData()
-            return playerData.job.name == Config.JobName and distance < 3.0
+            return isMechanic() and distance < 3.0
         end,
         onSelect = function(data)
             local maintenanceOptions = {}
@@ -282,6 +291,5 @@ exports('inspectVehicle', function(vehicle)
 end)
 
 exports('isPlayerMechanic', function()
-    local playerData = QBCore.Functions.GetPlayerData()
-    return playerData.job.name == Config.JobName
+    return isMechanic()
 end)
