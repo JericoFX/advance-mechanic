@@ -1,8 +1,9 @@
 local Tuning = {}
+local Framework = require 'shared.framework'
 
 lib.callback.register('mechanic:server:applyPerformanceMod', function(source, price, modType, level)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player then return false end
     
@@ -27,7 +28,7 @@ end)
 
 lib.callback.register('mechanic:server:applyVisualMod', function(source, price, modType, modIndex)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player then return false end
     
@@ -48,7 +49,7 @@ end)
 
 lib.callback.register('mechanic:server:installNitro', function(source, netId, capacity, price)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player then return false end
     
@@ -78,7 +79,7 @@ end)
 -- Save vehicle properties after modifications
 RegisterNetEvent('mechanic:server:saveVehicleProps', function(netId, props)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player or Player.PlayerData.job.name ~= Config.JobName then return end
     

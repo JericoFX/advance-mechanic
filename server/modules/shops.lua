@@ -1,7 +1,7 @@
 local Shops = {}
 local Database = require 'server.modules.database'
 local Business = require 'server.modules.business'
-local QBCore = exports['qb-core']:GetCoreObject()
+local Framework = require 'shared.framework'
 local shopCache = {}
 
 -- Load all shops from database
@@ -28,11 +28,11 @@ end
 
 -- Create new shop
 function Shops.Create(data, source)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     -- Check admin permissions
-    if Config.ShopCreation.requiresAdmin and not QBCore.Functions.HasPermission(source, 'admin') then
+    if Config.ShopCreation.requiresAdmin and not Framework.HasPermission(source, 'admin') then
         TriggerClientEvent('ox_lib:notify', source, {
             title = locale('no_permission'),
             type = 'error'
@@ -69,7 +69,7 @@ end
 
 -- Purchase shop
 function Shops.Purchase(source, shopId)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     local shop = Shops.GetById(shopId)
@@ -120,7 +120,7 @@ end
 
 -- Sell shop
 function Shops.Sell(source, shopId)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     local shop = Shops.GetById(shopId)
@@ -161,7 +161,7 @@ end
 
 -- Spawn service vehicle
 function Shops.SpawnServiceVehicle(source, model, coords)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     -- Check job
@@ -236,7 +236,7 @@ end
 
 -- Clock in/out system
 function Shops.ClockIn(source)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     local query = 'UPDATE mechanic_employees SET on_duty = 1, last_clock_in = NOW() WHERE citizenid = ?'
@@ -244,7 +244,7 @@ function Shops.ClockIn(source)
 end
 
 function Shops.ClockOut(source)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     local query = 'UPDATE mechanic_employees SET on_duty = 0 WHERE citizenid = ?'
@@ -329,7 +329,7 @@ end)
 
 -- Verificar permisos de empleados
 lib.callback.register('mechanic:server:hasEmployeePermission', function(source, shopId, permission)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     local citizenid = Player.PlayerData.citizenid

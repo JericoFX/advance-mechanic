@@ -1,4 +1,5 @@
 local Missions = {}
+local Framework = require 'shared.framework'
 
 local activeMissions = {}
 local missionCounter = 0
@@ -16,7 +17,7 @@ end
 
 -- Generate a new mission
 function Missions.Generate(source)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player or Player.PlayerData.job.name ~= Config.JobName then return false end
     
     local locations = Config.NPCMissions.locations
@@ -42,7 +43,7 @@ end
 
 -- Complete a mission
 function Missions.Complete(source, success)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player or Player.PlayerData.job.name ~= Config.JobName then return false end
     
     local mission = removeMissionForPlayer(source)
@@ -75,6 +76,10 @@ AddEventHandler('playerDropped', function()
 end)
 
 RegisterNetEvent('QBCore:Server:OnPlayerUnload', function(playerId)
+    removeMissionForPlayer(playerId or source)
+end)
+
+RegisterNetEvent('esx:playerDropped', function(playerId)
     removeMissionForPlayer(playerId or source)
 end)
 

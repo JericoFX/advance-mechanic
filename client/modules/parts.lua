@@ -1,4 +1,5 @@
 local Parts = {}
+local Framework = require 'shared.framework'
 local partsZones = {}
 
 function Parts.CreateZones(shops)
@@ -180,7 +181,7 @@ exports.ox_target:addGlobalVehicle({
         icon = 'fas fa-wrench',
         label = locale('install_parts'),
         canInteract = function(entity, distance, coords, name)
-            local playerData = QBCore.Functions.GetPlayerData()
+            local playerData = Framework.GetPlayerData()
             return playerData.job.name == Config.JobName and distance < 3.0
         end,
         onSelect = function(data)

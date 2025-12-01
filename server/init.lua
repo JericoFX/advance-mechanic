@@ -1,5 +1,4 @@
--- Initialize QBCore
-QBCore = exports[Config.Framework.resourceName]:GetCoreObject()
+local Framework = require 'shared.framework'
 
 -- Load modules
 local Database = require 'server.modules.database'
@@ -59,7 +58,7 @@ lib.addCommand('setmechanic', {
     },
     restricted = 'group.admin'
 }, function(source, args, raw)
-    local targetPlayer = QBCore.Functions.GetPlayer(args.target)
+local targetPlayer = Framework.GetPlayer(args.target)
     if targetPlayer then
         targetPlayer.Functions.SetJob(Config.JobName, args.grade or 0)
         TriggerClientEvent('ox_lib:notify', args.target, {
@@ -83,7 +82,7 @@ lib.addCommand('mechanicmenu', {
     help = 'Open mechanic menu',
     restricted = false
 }, function(source, args, raw)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if Player and Player.PlayerData.job.name == Config.JobName then
         TriggerClientEvent('mechanic:client:openMenu', source)
     else
@@ -104,8 +103,8 @@ lib.addCommand('createshop', {
 end)
 
 -- Mechanic job check
-QBCore.Functions.CreateCallback('mechanic:server:isPlayerMechanic', function(source, cb)
-    local Player = QBCore.Functions.GetPlayer(source)
+Framework.CreateCallback('mechanic:server:isPlayerMechanic', function(source, cb)
+    local Player = Framework.GetPlayer(source)
     if Player then
         cb(Player.PlayerData.job.name == Config.JobName)
     else
@@ -185,7 +184,7 @@ end)
 
 lib.callback.register('mechanic:server:repairVehicle', function(source, netId, cost)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player then return false end
     
@@ -206,7 +205,7 @@ end)
 
 lib.callback.register('mechanic:server:purchasePart', function(source, item, quantity, totalPrice)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player then return false end
     
@@ -220,7 +219,7 @@ end)
 
 lib.callback.register('mechanic:server:generateDiagnosticReport', function(source, plate, diagnosticData)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player or Player.PlayerData.job.name ~= Config.JobName then
         return false
@@ -310,7 +309,7 @@ end)
 -- Repair component callback
 lib.callback.register('mechanic:server:repairComponent', function(source, plate, component, cost)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = Framework.GetPlayer(src)
     
     if not Player or Player.PlayerData.job.name ~= Config.JobName then
         return false

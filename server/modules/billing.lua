@@ -1,9 +1,10 @@
 local Billing = {}
+local Framework = require 'shared.framework'
 
 lib.callback.register('mechanic:server:sendInvoice', function(source, invoice)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    local Target = QBCore.Functions.GetPlayer(invoice.targetPlayer)
+    local Player = Framework.GetPlayer(src)
+    local Target = Framework.GetPlayer(invoice.targetPlayer)
     
     if not Player or not Target then return false end
     
@@ -45,8 +46,8 @@ end)
 
 lib.callback.register('mechanic:server:sendQuickBill', function(source, targetId, amount, reason)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    local Target = QBCore.Functions.GetPlayer(targetId)
+    local Player = Framework.GetPlayer(src)
+    local Target = Framework.GetPlayer(targetId)
     
     if not Player or not Target then return false end
     

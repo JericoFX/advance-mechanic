@@ -1,4 +1,5 @@
 local Business = {}
+local Framework = require 'shared.framework'
 
 -- Crear negocio mecánico
 function Business.createBusiness(shopId, ownerId, shopName)
@@ -97,7 +98,7 @@ function Business.hireEmployee(shopId, targetId, grade)
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return false, 'business_not_found' end
     
-    local Target = QBCore.Functions.GetPlayer(targetId)
+    local Target = Framework.GetPlayer(targetId)
     if not Target then return false, 'player_not_found' end
     
     local targetCitizenId = Target.PlayerData.citizenid
@@ -123,7 +124,7 @@ function Business.fireEmployee(shopId, targetCitizenId)
     
     if success then
         -- Actualizar job del jugador
-        local Target = QBCore.Functions.GetPlayerByCitizenId(targetCitizenId)
+        local Target = Framework.GetPlayerByCitizenId(targetCitizenId)
         if Target then
             Target.Functions.SetJob('unemployed', 0)
         end
@@ -142,7 +143,7 @@ function Business.updateEmployeeGrade(shopId, targetCitizenId, newGrade)
     
     if success then
         -- Actualizar job del jugador
-        local Target = QBCore.Functions.GetPlayerByCitizenId(targetCitizenId)
+        local Target = Framework.GetPlayerByCitizenId(targetCitizenId)
         if Target then
             Target.Functions.SetJob(Config.JobName, newGrade)
         end

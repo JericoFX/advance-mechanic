@@ -1,7 +1,7 @@
-QBCore = exports[Config.Framework.resourceName]:GetCoreObject()
+local Framework = require 'shared.framework'
 
 local function getPlayerJob()
-    local playerData = QBCore.Functions.GetPlayerData()
+    local playerData = Framework.GetPlayerData()
     return playerData and playerData.job
 end
 
@@ -67,21 +67,21 @@ end
 local playerLoaded = false
 
 -- Player loaded event
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+Framework.OnPlayerLoaded(function()
     playerLoaded = true
-    
+
     -- Load shops
     Shops.LoadShops()
-    
+
     -- Initialize damage monitoring
     Damage.Monitor()
-    
+
     -- Initialize fluid effects monitoring
     FluidEffects.Monitor()
 end)
 
 -- Player unloaded event
-RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+Framework.OnPlayerUnload(function()
     playerLoaded = false
 end)
 
@@ -89,7 +89,7 @@ end)
 AddEventHandler('onResourceStart', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
     
-    if LocalPlayer.state.isLoggedIn then
+    if LocalPlayer.state.isLoggedIn or Framework.IsESX then
         playerLoaded = true
         Shops.LoadShops()
         Damage.Monitor()
