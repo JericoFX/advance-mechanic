@@ -1,5 +1,6 @@
 local Vehicles = {}
 local Database = require 'server.modules.database'
+local Framework = require 'shared.framework'
 
 -- Get vehicle inspection data
 function Vehicles.GetInspectionData(plate)
@@ -63,7 +64,7 @@ end
 
 -- Update vehicle color using ox_lib
 function Vehicles.UpdateColor(source, plate, colorType, color)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     -- Check if player owns the vehicle
@@ -138,7 +139,7 @@ function Vehicles.ProcessDamage(plate, impactData)
     local coords = impactData.coords
     if coords then
         for _, playerId in ipairs(GetPlayers()) do
-            local Player = QBCore.Functions.GetPlayer(tonumber(playerId))
+            local Player = Framework.GetPlayer(tonumber(playerId))
             if Player and Player.PlayerData.job.name == Config.JobName then
                 local ped = GetPlayerPed(tonumber(playerId))
                 local playerCoords = GetEntityCoords(ped)
@@ -157,7 +158,7 @@ end
 
 -- Repair vehicle part
 function Vehicles.RepairPart(source, plate, part, amount)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     -- Check if mechanic
@@ -191,7 +192,7 @@ end
 
 -- Purchase vehicle part
 function Vehicles.PurchasePart(source, partId, quantity, totalPrice)
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
     local partData = Config.VehicleParts[partId]

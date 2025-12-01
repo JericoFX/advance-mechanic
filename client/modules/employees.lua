@@ -1,7 +1,8 @@
 local Employees = {}
+local Framework = require 'shared.framework'
 
 function Employees.OpenManagementMenu(shop)
-    local playerData = QBCore.Functions.GetPlayerData()
+    local playerData = Framework.GetPlayerData()
     
     -- Verificar permisos usando advance-manager
     local hasPermission = lib.callback.await('mechanic:server:hasEmployeePermission', false, shop.id, 'manage_employees')

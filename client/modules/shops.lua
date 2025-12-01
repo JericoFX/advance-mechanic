@@ -1,4 +1,5 @@
 local Shops = {}
+local Framework = require 'shared.framework'
 local shops = {}
 local blips = {}
 local zones = {}
@@ -101,7 +102,7 @@ function Shops.OpenManagementMenu(shop)
         }
     }
 
-    local playerJob = QBCore.Functions.GetPlayerData().job
+    local playerJob = Framework.GetPlayerData() and Framework.GetPlayerData().job
     if playerJob.name == Config.JobName then
         table.insert(options, {
             title = locale('spawn_service_vehicle'),
