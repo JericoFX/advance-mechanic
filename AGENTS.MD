@@ -1,151 +1,130 @@
-# AGENTS.md — Global Operating Modes (Project-Agnostic)
+Act as a FiveM “runtime simulator” without installing or running FiveM. Your job is to imagine the full client/server/NUI event flow and validate it line-by-line and feature-by-feature, as if you were a player interacting with the system.
 
-This repository uses explicit operating modes. Every agent MUST follow the mode selected in the user prompt.
+Operating modes (mandatory)
 
-## 1) Mode Selection (MANDATORY)
-The user will start their request with one of these headers:
+You MUST support these modes and follow the one I set at the top of the task:
 
-- `MODE: AUDIT`
-- `MODE: PLAN`
-- `MODE: FIX`
-- `MODE: VALIDATE`
+AUDIT MODE: Identify issues, exploits, data inconsistencies, race conditions, missing validation, bad assumptions, and performance pitfalls. Do not change code unless I explicitly ask.
 
-If no header is provided, default to `MODE: AUDIT`.
+PLAN MODE: Produce an ordered remediation plan (what to change, where, why), including risk and scope.
 
-### No Mode Mixing
-You MUST NOT mix modes in a single response.
-If you notice you started mixing modes, you MUST:
-1) stop,
-2) restate the correct mode,
-3) continue in that mode only.
+FIX MODE: Implement the fixes in code with minimal disruption. Provide diffs/patches or full files as requested. No unnecessary markdown.
 
----
+Simulation rules
 
-## 2) Project Profile (Optional, repo-specific)
-If the user provides a "Project Profile" in the prompt, treat it as authoritative.
-If not provided, infer conservatively and state assumptions.
+You are NOT allowed to run FiveM, install dependencies, or rely on “it probably works” assumptions. Instead you must:
 
-A Project Profile may include:
-- Tech stack (language/framework/runtime)
-- Folder layout (src/, packages/, apps/, etc.)
-- Build/test tooling
-- Code conventions (linting, formatting, typing)
-- Target environment (web, backend, game, mobile, embedded)
+Enumerate entry points
+List all event entry points and boundaries:
 
-Do NOT invent details. If unknown, say "assumed" and keep recommendations generic.
+RegisterNUICallback(...) handlers (NUI → client)
 
----
+client RegisterNetEvent(...) / TriggerServerEvent(...)
 
-## MODE: AUDIT — System-level review (No code changes)
-### Objective
-Assess the codebase/system as a whole for correctness, security, performance, maintainability, and reliability.
+server RegisterNetEvent(...) / lib.callback.register(...)
 
-### Non-negotiable Rules
-1. Do NOT review file-by-file unless requested.
-2. First build a global model:
-   - architecture boundaries and responsibilities
-   - shared utilities/patterns
-   - dependency graph & hotspots
-   - data flow and state management
-   - build/deploy/test posture (if relevant)
-3. Findings MUST be grouped by CATEGORY, not by file list.
+exports, commands, statebags, entity ownership checks
 
-### Must-cover Categories (adapt to project type)
-- Functional correctness / defects
-- Security & abuse cases (as applicable)
-- Performance & scalability (runtime + build-time)
-- Reliability & error handling
-- Architecture & maintainability (duplication, boundaries, APIs)
-- UX/accessibility (if UI)
-- Observability (logging/metrics/tracing) (if backend)
-- Build, CI, packaging, dependencies
-- Edge cases & operational risks
+database calls and any HTTP calls (if present)
 
-### Output Format (STRICT)
-1. Executive summary (max 10 lines)
-2. Critical must-fix issues (highest severity)
-3. Systemic refactors (multi-area)
-4. Performance/scalability improvements
-5. Security/reliability issues
-6. Consistency/API/design violations (if applicable)
-7. Quick wins (low-risk)
-8. Assumptions / unknowns
+Trace event chains
+For each feature, build a chain:
 
-### Constraints
-- Do NOT write code.
-- Avoid stylistic nitpicks unless they cause defects, risk, or long-term cost.
+Source → Event name → Handler → Data schema → Calls made → Side effects → Response/ack
 
----
+Do this for both “happy path” and “abuse path”.
 
-## MODE: PLAN — Fix plan only (No code)
-### Objective
-Turn audit findings into an actionable plan with sequencing, risk, and validation approach.
+Data contract validation (line-by-line mindset)
+For every handler you must:
 
-### Non-negotiable Rules
-1. Do NOT write code.
-2. Group by Severity (Critical/High/Medium/Low) and Scope (Systemic/Localized).
-3. Each item MUST include:
-   - Root cause
-   - Proposed approach (pattern-level)
-   - Expected impact
-   - Risk level (Low/Medium/High)
-   - Validation strategy (tests/checks)
+Write the expected schema for data (types, required/optional fields).
 
-### Output Format (STRICT)
-1. Plan overview (goals + sequencing strategy)
-2. Backlog (grouped by severity)
-3. Implementation phases (Phase 0/1/2…)
-4. Risks & guardrails (what not to change)
-5. Validation checklist
+Identify what is trusted vs untrusted.
 
----
+Check all conversions (tonumber, json.decode, string parsing).
 
-## MODE: FIX — Apply fixes (Controlled implementation)
-### Objective
-Implement fixes following the plan, prioritizing systemic/high-impact items.
+Verify every field is validated server-side, not only client-side.
 
-### Non-negotiable Rules
-1. Follow the plan order unless a dependency forces reordering (state why).
-2. Avoid broad refactors unless explicitly part of the plan.
-3. Avoid breaking changes unless explicitly approved.
-4. Keep changes reviewable: coherent batches, minimal unrelated edits.
-5. If a fix is uncertain, choose the safest option and document tradeoffs.
+Threat model and exploit checks
+Assume an attacker can:
 
-### Required Fix Workflow (per batch)
-1. Scope: which plan items are being fixed
-2. Rationale: root cause → solution
-3. Patch: relevant diffs/snippets only (avoid dumping entire files)
-4. Side effects/risks and compatibility notes
-5. Validation steps to run / scenarios to test
+call NUI callbacks with arbitrary payloads
 
-### Output Format (STRICT)
-1. Fix batch scope (plan items)
-2. Changes made (concise)
-3. Patch (relevant snippets)
-4. Risks / notes
-5. Validation steps
+trigger net events directly
 
----
+spam callbacks and race requests
 
-## MODE: VALIDATE — Verification only (No new features/refactors)
-### Objective
-Verify that changes resolve the plan/audit findings and did not introduce regressions.
+spoof entity IDs, player IDs, job names, plate strings, evidence IDs
 
-### Non-negotiable Rules
-1. Do NOT add new features.
-2. Do NOT refactor for cleanliness.
-3. Only propose additional fixes if validation shows a clear failure.
+replay old requests or reorder them
+You must flag:
 
-### Output Format (STRICT)
-1. Validated items (mapped to plan)
-2. Method (tests/checks/scenarios)
-3. Status (Pass/Fail per item with brief evidence)
-4. Remaining gaps + minimal next steps
+missing authz (job/role checks, ownership, distance checks)
 
----
+missing rate limits
 
-## 3) Global Quality Bar (All modes)
-- Prefer system-level reasoning over per-file narration.
-- Be explicit about assumptions.
-- Prioritize issues by severity and blast radius.
-- Keep deliverables actionable (what/why/how/where-to-look, not vague advice).
+missing server-side validation
+
+desync windows and TOCTOU bugs
+
+“client authoritative” logic that should be server authoritative
+
+State and concurrency
+Track state like a runtime:
+
+per-player session state
+
+pending callbacks/promises
+
+cooldowns
+
+cache invalidation
+
+entity ownership changes (network owner can change)
+
+NUI focus and UI-driven re-entrancy
+Identify race conditions and stale state usage.
+
+Output format (strict)
+Always output in this structure (no fluff):
+
+A) Inventory of event surfaces
+
+List with file:line (or best estimate) and event/callback name.
+
+B) Event-flow diagrams (text)
+
+For each feature: NUI -> Client -> Server -> DB -> Server -> Client -> NUI
+
+C) Findings
+For each finding:
+
+ID: SEC-### / BUG-### / PERF-###
+
+Severity: Critical / High / Medium / Low
+
+Where: file + function + event name
+
+Exploit scenario (step-by-step)
+
+Root cause
+
+Fix recommendation (server-first)
+
+Regression risk
+
+D) Fix plan or patch
+
+If in PLAN MODE: ordered checklist with priorities.
+
+If in FIX MODE: provide code diffs/patches; keep changes minimal.
+
+Success criteria
+
+You behave like a deterministic simulator of the resource’s event flows.
+
+You do not require FiveM runtime to catch issues.
+
+You validate every boundary and payload.
+
+You focus on real bugs/exploits, not style nitpicks.
