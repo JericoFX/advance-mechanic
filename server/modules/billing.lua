@@ -1,43 +1,52 @@
 local Billing = {}
 local Framework = require 'shared.framework'
+local Validation = require 'server.modules.validation'
 
 lib.callback.register('mechanic:server:sendInvoice', function(source, invoice)
     local src = source
     local Player = Framework.GetPlayer(src)
-    local Target = Framework.GetPlayer(invoice.targetPlayer)
+    local normalized = Validation.NormalizeInvoice(invoice)
     
-    if not Player or not Target then return false end
+    if not Player or not normalized then return false end
     
-    if Player.PlayerData.job.name ~= Config.JobName then
+    if not Validation.IsMechanic(Player) then
         return false
     end
+
+    local Target = Framework.GetPlayer(normalized.targetPlayer)
+    if not Target then return false end
     
     -- Create detailed invoice description
     local description = 'Mechanic Invoice\n'
-    for _, item in ipairs(invoice.items) do
+    for _, item in ipairs(normalized.items) do
         description = description .. string.format('%s x%d - $%d\n', item.label, item.quantity, item.total)
     end
-    description = description .. string.format('\nTotal: $%d', invoice.total)
+    description = description .. string.format('\nTotal: $%d', normalized.total)
     
     -- Send bill using QBCore billing system
-    MySQL.insert('INSERT INTO phone_invoices (citizenid, amount, society, sender, sendercitizenid) VALUES (?, ?, ?, ?, ?)', {
-        Target.PlayerData.citizenid,
-        invoice.total,
-        Config.JobName,
-        Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname,
-        Player.PlayerData.citizenid
-    })
+    if Framework.IsQBCore then
+        MySQL.insert('INSERT INTO phone_invoices (citizenid, amount, society, sender, sendercitizenid) VALUES (?, ?, ?, ?, ?)', {
+            Target.PlayerData.citizenid,
+            normalized.total,
+            Config.JobName,
+            Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname,
+            Player.PlayerData.citizenid
+        })
+    else
+        -- TODO: add ESX billing integration.
+        return false
+    end
     
     -- Notify both players
     TriggerClientEvent('ox_lib:notify', src, {
         title = 'Invoice Sent',
-        description = string.format('Invoice for $%d sent successfully', invoice.total),
+        description = string.format('Invoice for $%d sent successfully', normalized.total),
         type = 'success'
     })
     
-    TriggerClientEvent('ox_lib:notify', invoice.targetPlayer, {
+    TriggerClientEvent('ox_lib:notify', normalized.targetPlayer, {
         title = 'Invoice Received',
-        description = string.format('You received a mechanic invoice for $%d', invoice.total),
+        description = string.format('You received a mechanic invoice for $%d', normalized.total),
         type = 'info'
     })
     
@@ -51,17 +60,27 @@ lib.callback.register('mechanic:server:sendQuickBill', function(source, targetId
     
     if not Player or not Target then return false end
     
-    if Player.PlayerData.job.name ~= Config.JobName then
+    if not Validation.IsMechanic(Player) then
+        return false
+    end
+
+    local billAmount = tonumber(amount)
+    if not Validation.IsNumberInRange(billAmount, Config.Billing.quickBill.minAmount, Config.Billing.quickBill.maxAmount) then
         return false
     end
     
-    MySQL.insert('INSERT INTO phone_invoices (citizenid, amount, society, sender, sendercitizenid) VALUES (?, ?, ?, ?, ?)', {
-        Target.PlayerData.citizenid,
-        amount,
-        Config.JobName,
-        Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname,
-        Player.PlayerData.citizenid
-    })
+    if Framework.IsQBCore then
+        MySQL.insert('INSERT INTO phone_invoices (citizenid, amount, society, sender, sendercitizenid) VALUES (?, ?, ?, ?, ?)', {
+            Target.PlayerData.citizenid,
+            billAmount,
+            Config.JobName,
+            Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname,
+            Player.PlayerData.citizenid
+        })
+    else
+        -- TODO: add ESX billing integration.
+        return false
+    end
     
     TriggerClientEvent('ox_lib:notify', src, {
         title = 'Bill Sent',

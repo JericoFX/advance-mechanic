@@ -1,4 +1,5 @@
 local Framework = require 'shared.framework'
+local Validation = require 'server.modules.validation'
 
 -- Load modules
 local Database = require 'server.modules.database'
@@ -20,6 +21,11 @@ CreateThread(function()
             `zones` longtext NOT NULL,
             `lifts` longtext NOT NULL,
             `vehicleSpawns` longtext NOT NULL,
+            `employees` longtext DEFAULT '[]',
+            `storage` longtext DEFAULT '{}',
+            `payrollEnabled` tinyint(1) DEFAULT 0,
+            `payment_frequency` varchar(20) DEFAULT 'weekly',
+            `payment_day` varchar(20) DEFAULT 'friday',
             `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -43,7 +49,12 @@ CreateThread(function()
     MySQL.query([[
         ALTER TABLE `player_vehicles` 
         ADD COLUMN IF NOT EXISTS `inspection_data` longtext DEFAULT NULL,
-        ADD COLUMN IF NOT EXISTS `props` longtext DEFAULT NULL;
+        ADD COLUMN IF NOT EXISTS `props` longtext DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS `fluid_data` longtext DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS `damage_data` longtext DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS `maintenance_history` longtext DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS `last_diagnostic` longtext DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS `mileage` int(11) DEFAULT 0;
     ]])
     
     print('[Advanced Mechanic] Database tables initialized')
@@ -125,25 +136,29 @@ CreateThread(function()
     Wait(1000)
     
     -- Check if job exists
-    local result = MySQL.query.await('SELECT * FROM jobs WHERE name = ?', {Config.JobName})
-    
-    if not result or #result == 0 then
-        -- Create mechanic job
-        MySQL.insert([[
-            INSERT INTO jobs (name, label, grades) VALUES (?, ?, ?)
-        ]], {
-            Config.JobName,
-            'Mechanic',
-            json.encode({
-                ['0'] = {name = 'Recruit', payment = 50},
-                ['1'] = {name = 'Novice', payment = 75},
-                ['2'] = {name = 'Experienced', payment = 100},
-                ['3'] = {name = 'Expert', payment = 125},
-                ['4'] = {name = 'Boss', payment = 150, isboss = true}
-            })
-        })
+    if Framework.IsQBCore then
+        local result = MySQL.query.await('SELECT * FROM jobs WHERE name = ?', {Config.JobName})
         
-        print('[Advanced Mechanic] Mechanic job created')
+        if not result or #result == 0 then
+            -- Create mechanic job
+            MySQL.insert([[
+                INSERT INTO jobs (name, label, grades) VALUES (?, ?, ?)
+            ]], {
+                Config.JobName,
+                'Mechanic',
+                json.encode({
+                    ['0'] = {name = 'Recruit', payment = 50},
+                    ['1'] = {name = 'Novice', payment = 75},
+                    ['2'] = {name = 'Experienced', payment = 100},
+                    ['3'] = {name = 'Expert', payment = 125},
+                    ['4'] = {name = 'Boss', payment = 150, isboss = true}
+                })
+            })
+            
+            print('[Advanced Mechanic] Mechanic job created')
+        end
+    else
+        -- TODO: add ESX job creation if required.
     end
 end)
 
@@ -188,11 +203,33 @@ lib.callback.register('mechanic:server:repairVehicle', function(source, netId, c
     
     if not Player then return false end
     
-    if Player.PlayerData.job.name ~= Config.JobName then
+    if not Validation.IsMechanic(Player) then
         return false
     end
     
-    if Player.Functions.RemoveMoney('cash', cost) then
+    local vehicle = Validation.GetVehicleByNetId(netId)
+    if not vehicle or not Validation.IsPlayerNearEntity(src, vehicle, 8.0) then
+        return false
+    end
+
+    local plate = GetVehicleNumberPlateText(vehicle)
+    local isOwned = Validation.IsVehicleOwned(plate)
+    if not isOwned then
+        return false
+    end
+
+    local repairCost = Config.Maintenance.repairAllCost
+    if not repairCost then
+        -- TODO: define repair cost strategy.
+        repairCost = tonumber(cost) or 0
+    end
+
+    if repairCost <= 0 then
+        return false
+    end
+
+    local account = Config.Economy.payWithCash and 'cash' or 'bank'
+    if Player.Functions.RemoveMoney(account, repairCost) then
         return true
     else
         TriggerClientEvent('ox_lib:notify', src, {
@@ -203,25 +240,11 @@ lib.callback.register('mechanic:server:repairVehicle', function(source, netId, c
     end
 end)
 
-lib.callback.register('mechanic:server:purchasePart', function(source, item, quantity, totalPrice)
-    local src = source
-    local Player = Framework.GetPlayer(src)
-    
-    if not Player then return false end
-    
-    if Player.Functions.RemoveMoney('cash', totalPrice) then
-        exports.ox_inventory:AddItem(src, item, quantity)
-        return true
-    else
-        return false
-    end
-end)
-
 lib.callback.register('mechanic:server:generateDiagnosticReport', function(source, plate, diagnosticData)
     local src = source
     local Player = Framework.GetPlayer(src)
     
-    if not Player or Player.PlayerData.job.name ~= Config.JobName then
+    if not Player or not Validation.IsMechanic(Player) then
         return false
     end
     
@@ -241,71 +264,6 @@ lib.callback.register('mechanic:server:generateDiagnosticReport', function(sourc
     return true
 end)
 
--- Vehicle damage tracking
-RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, damageData)
-    local src = source
-    
-    -- Update vehicle damage in database
-    MySQL.update('UPDATE player_vehicles SET damage_data = ? WHERE plate = ?', {
-        json.encode(damageData),
-        plate
-    })
-end)
-
--- Enhanced fluid and component data callback
-lib.callback.register('mechanic:server:getVehicleFluidData', function(source, plate)
-    local result = MySQL.query.await('SELECT fluid_data FROM player_vehicles WHERE plate = ?', {plate})
-    
-    if result and result[1] and result[1].fluid_data then
-        local fluidData = json.decode(result[1].fluid_data)
-        return {
-            oilLevel = fluidData.oilLevel or 100,
-            coolantLevel = fluidData.coolantLevel or 100,
-            brakeFluidLevel = fluidData.brakeFluidLevel or 100,
-            transmissionFluidLevel = fluidData.transmissionFluidLevel or 100,
-            powerSteeringLevel = fluidData.powerSteeringLevel or 100,
-            tireWear = fluidData.tireWear or 0,
-            batteryLevel = fluidData.batteryLevel or 100,
-            gearBoxHealth = fluidData.gearBoxHealth or 100
-        }
-    end
-    
-    -- Return default values for new vehicles
-    return {
-        oilLevel = 100,
-        coolantLevel = 100,
-        brakeFluidLevel = 100,
-        transmissionFluidLevel = 100,
-        powerSteeringLevel = 100,
-        tireWear = 0,
-        batteryLevel = 100,
-        gearBoxHealth = 100
-    }
-end)
-
--- Enhanced fluid sync event
-RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
-    local src = source
-    
-    -- Enhanced fluid data with new components
-    local enhancedFluidData = {
-        oilLevel = fluidData.oilLevel or 100,
-        coolantLevel = fluidData.coolantLevel or 100,
-        brakeFluidLevel = fluidData.brakeFluidLevel or 100,
-        transmissionFluidLevel = fluidData.transmissionFluidLevel or 100,
-        powerSteeringLevel = fluidData.powerSteeringLevel or 100,
-        tireWear = fluidData.tireWear or 0,
-        batteryLevel = fluidData.batteryLevel or 100,
-        gearBoxHealth = fluidData.gearBoxHealth or 100,
-        lastUpdate = os.time()
-    }
-    
-    MySQL.update('UPDATE player_vehicles SET fluid_data = ? WHERE plate = ?', {
-        json.encode(enhancedFluidData),
-        plate
-    })
-end)
-
 -- Repair component callback
 lib.callback.register('mechanic:server:repairComponent', function(source, plate, component, cost)
     local src = source
@@ -315,7 +273,13 @@ lib.callback.register('mechanic:server:repairComponent', function(source, plate,
         return false
     end
     
-    if Player.Functions.RemoveMoney('cash', cost) then
+    local componentCost = tonumber(cost)
+    if not componentCost or componentCost <= 0 or componentCost > Config.Maintenance.maxComponentCost then
+        return false
+    end
+
+    local account = Config.Economy.payWithCash and 'cash' or 'bank'
+    if Player.Functions.RemoveMoney(account, componentCost) then
         -- Get current fluid data
         local result = MySQL.query.await('SELECT fluid_data FROM player_vehicles WHERE plate = ?', {plate})
         local fluidData = {}

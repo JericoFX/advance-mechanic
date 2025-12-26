@@ -27,7 +27,10 @@ local function collectFluidData(vehicle)
         coolantLevel = state.coolantLevel or 100,
         brakeFluidLevel = state.brakeFluidLevel or 100,
         transmissionFluidLevel = state.transmissionFluidLevel or 100,
-        powerSteeringLevel = state.powerSteeringLevel or 100
+        powerSteeringLevel = state.powerSteeringLevel or 100,
+        tireWear = state.tireWear or 0,
+        batteryLevel = state.batteryLevel or 100,
+        gearBoxHealth = state.gearBoxHealth or 100
     }
 end
 

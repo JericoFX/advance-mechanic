@@ -104,17 +104,17 @@ function Billing.AddLaborDialog()
             type = 'number',
             label = locale('hours'),
             default = 1,
-            min = 0.5,
-            max = 10,
+            min = Config.Billing.labor.minHours,
+            max = Config.Billing.labor.maxHours,
             step = 0.5,
             required = true
         },
         {
             type = 'number',
             label = locale('hourly_rate'),
-            default = 50,
-            min = 25,
-            max = 150,
+            default = Config.Billing.labor.minRate,
+            min = Config.Billing.labor.minRate,
+            max = Config.Billing.labor.maxRate,
             required = true
         }
     })
@@ -177,8 +177,8 @@ function Billing.AddPartDialog()
             type = 'number',
             label = locale('quantity'),
             default = 1,
-            min = 1,
-            max = 10,
+            min = Config.Billing.parts.minQuantity,
+            max = Config.Billing.parts.maxQuantity,
             required = true
         }
     })

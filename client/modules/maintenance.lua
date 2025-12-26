@@ -73,7 +73,7 @@ end
 function Maintenance.RepairAll(vehicle)
     if not DoesEntityExist(vehicle) then return end
     
-    local repairCost = 1000 -- Base repair cost
+    local repairCost = Config.Maintenance.repairAllCost
     
     local alert = lib.alertDialog({
         header = locale('repair_all_systems'),

@@ -1,8 +1,16 @@
 local Business = {}
 local Framework = require 'shared.framework'
 
+local function isAdvanceManagerReady()
+    return GetResourceState('advance-manager') == 'started'
+end
+
 -- Crear negocio mecánico
 function Business.createBusiness(shopId, ownerId, shopName)
+    if not isAdvanceManagerReady() then
+        return false, 'advance_manager_unavailable'
+    end
+
     local success, businessId = exports['advance-manager']:createBusiness(
         shopName,
         ownerId,
@@ -19,6 +27,10 @@ end
 
 -- Obtener negocio por tienda
 function Business.getBusinessByShop(shopId)
+    if not isAdvanceManagerReady() then
+        return nil
+    end
+
     local businesses = exports['advance-manager']:getBusinessByOwner(shopId)
     if businesses and #businesses > 0 then
         for _, business in pairs(businesses) do
@@ -32,6 +44,10 @@ end
 
 -- Verificar si es jefe del negocio
 function Business.isBusinessBoss(citizenId, shopId)
+    if not isAdvanceManagerReady() then
+        return false
+    end
+
     local business = Business.getBusinessByShop(shopId)
     if not business then return false end
     
@@ -40,6 +56,10 @@ end
 
 -- Verificar permisos del negocio
 function Business.hasBusinessPermission(citizenId, shopId, permission)
+    if not isAdvanceManagerReady() then
+        return false
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return false end
     
@@ -48,6 +68,10 @@ end
 
 -- Obtener fondos del negocio
 function Business.getBusinessFunds(shopId)
+    if not isAdvanceManagerReady() then
+        return 0
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return 0 end
     
@@ -56,6 +80,10 @@ end
 
 -- Actualizar fondos del negocio
 function Business.updateBusinessFunds(shopId, amount, isWithdrawal)
+    if not isAdvanceManagerReady() then
+        return false
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return false end
     
@@ -64,6 +92,10 @@ end
 
 -- Obtener empleados del negocio
 function Business.getBusinessEmployees(shopId)
+    if not isAdvanceManagerReady() then
+        return {}
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return {} end
     
@@ -95,6 +127,10 @@ end
 
 -- Contratar empleado
 function Business.hireEmployee(shopId, targetId, grade)
+    if not isAdvanceManagerReady() then
+        return false, 'advance_manager_unavailable'
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return false, 'business_not_found' end
     
@@ -117,6 +153,10 @@ end
 
 -- Despedir empleado
 function Business.fireEmployee(shopId, targetCitizenId)
+    if not isAdvanceManagerReady() then
+        return false, 'advance_manager_unavailable'
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return false, 'business_not_found' end
     
@@ -136,6 +176,10 @@ end
 
 -- Actualizar grado del empleado
 function Business.updateEmployeeGrade(shopId, targetCitizenId, newGrade)
+    if not isAdvanceManagerReady() then
+        return false, 'advance_manager_unavailable'
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return false, 'business_not_found' end
     
@@ -155,6 +199,10 @@ end
 
 -- Actualizar wage del empleado
 function Business.updateEmployeeWage(shopId, targetCitizenId, newWage)
+    if not isAdvanceManagerReady() then
+        return false, 'advance_manager_unavailable'
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return false, 'business_not_found' end
     
@@ -169,6 +217,10 @@ end
 
 -- Obtener rank del empleado
 function Business.getEmployeeRank(citizenId, shopId)
+    if not isAdvanceManagerReady() then
+        return 0
+    end
+
     local businessData = Business.getBusinessByShop(shopId)
     if not businessData then return 0 end
     

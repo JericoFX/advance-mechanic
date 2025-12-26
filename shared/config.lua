@@ -35,6 +35,55 @@ Config.Economy = {
     partMarkup = 1.5, -- 50% markup on parts
 }
 
+Config.Billing = {
+    labor = {
+        minHours = 0.5,
+        maxHours = 10,
+        minRate = 25,
+        maxRate = 150
+    },
+    parts = {
+        minQuantity = 1,
+        maxQuantity = 10,
+        fallbackMaxUnitPrice = 10000 -- TODO: adjust if custom part pricing exceeds this.
+    },
+    quickBill = {
+        minAmount = 1,
+        maxAmount = 100000 -- TODO: adjust to match economy balance.
+    },
+    maxInvoiceTotal = 250000 -- TODO: adjust to match economy balance.
+}
+
+Config.Tuning = {
+    performanceMods = {
+        [11] = {maxLevel = 4, basePrice = 5000},
+        [12] = {maxLevel = 3, basePrice = 3000},
+        [13] = {maxLevel = 3, basePrice = 4000},
+        [15] = {maxLevel = 4, basePrice = 3500},
+        [16] = {maxLevel = 5, basePrice = 7500},
+        [18] = {maxLevel = 1, basePrice = 15000}
+    },
+    visualMods = {
+        [0] = {basePrice = 3000},
+        [1] = {basePrice = 2500},
+        [2] = {basePrice = 2500},
+        [3] = {basePrice = 2000},
+        [4] = {basePrice = 1500}
+    },
+    nitro = {
+        install = {
+            [50] = 5000,
+            [100] = 8000
+        },
+        refill = 2000
+    }
+}
+
+Config.Maintenance = {
+    repairAllCost = 1000,
+    maxComponentCost = 25000 -- TODO: adjust to match economy balance.
+}
+
 -- Shop creation settings
 Config.ShopCreation = {
     basePrice = 100000,

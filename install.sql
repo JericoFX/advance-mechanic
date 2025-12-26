@@ -13,10 +13,15 @@ CREATE TABLE IF NOT EXISTS `mechanic_shops` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL,
   `owner` varchar(50) DEFAULT NULL,
-  `price` int(11) NOT NULL DEFAULT 0,
+  `price` int(11) NOT NULL DEFAULT 100000,
   `zones` longtext DEFAULT NULL,
+  `lifts` longtext DEFAULT NULL,
+  `vehicleSpawns` longtext DEFAULT NULL,
   `employees` longtext DEFAULT '[]',
   `storage` longtext DEFAULT '{}',
+  `payrollEnabled` tinyint(1) DEFAULT 0,
+  `payment_frequency` varchar(20) DEFAULT 'weekly',
+  `payment_day` varchar(20) DEFAULT 'friday',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   INDEX `idx_owner` (`owner`)
@@ -90,3 +95,8 @@ ALTER TABLE `mechanic_shops`
   ADD COLUMN IF NOT EXISTS `payrollEnabled` tinyint(1) DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `payment_frequency` varchar(20) DEFAULT 'weekly',
   ADD COLUMN IF NOT EXISTS `payment_day` varchar(20) DEFAULT 'friday';
+
+-- Ensure shop layout columns exist
+ALTER TABLE `mechanic_shops`
+  ADD COLUMN IF NOT EXISTS `lifts` longtext DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `vehicleSpawns` longtext DEFAULT NULL;

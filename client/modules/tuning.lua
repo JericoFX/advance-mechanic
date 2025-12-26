@@ -1,14 +1,7 @@
 local Tuning = {}
 local VisualEffects = require 'client.modules.visual_effects'
 
-local performanceMods = {
-    [11] = {label = locale('engine'), maxLevel = 4, basePrice = 5000},
-    [12] = {label = locale('brakes'), maxLevel = 3, basePrice = 3000},
-    [13] = {label = locale('transmission'), maxLevel = 3, basePrice = 4000},
-    [15] = {label = locale('suspension'), maxLevel = 4, basePrice = 3500},
-    [16] = {label = locale('armor'), maxLevel = 5, basePrice = 7500},
-    [18] = {label = locale('turbo'), maxLevel = 1, basePrice = 15000}
-}
+local performanceMods = Config.Tuning.performanceMods
 
 function Tuning.OpenMenu(vehicle)
     if not DoesEntityExist(vehicle) then return end
@@ -84,7 +77,7 @@ function Tuning.PerformanceMenu(vehicle)
                 {label = locale('price'), value = '$' .. price}
             },
             onSelect = function()
-                Tuning.ApplyPerformanceMod(vehicle, modType, nextLevel, price)
+                Tuning.ApplyPerformanceMod(vehicle, modType, nextLevel)
             end
         })
     end
@@ -99,7 +92,7 @@ function Tuning.PerformanceMenu(vehicle)
     lib.showContext('performance_menu')
 end
 
-function Tuning.ApplyPerformanceMod(vehicle, modType, level, price)
+function Tuning.ApplyPerformanceMod(vehicle, modType, level)
     -- Check if hood needs to be open for engine mods
     if modType == 11 and not VisualEffects.CheckHoodOpen(vehicle) then
         lib.notify({
@@ -142,7 +135,7 @@ function Tuning.ApplyPerformanceMod(vehicle, modType, level, price)
                 local props = lib.getVehicleProperties(vehicle)
                 TriggerServerEvent('mechanic:server:saveVehicleProps', VehToNet(vehicle), props)
             end
-        end, price, modType, level)
+        end, VehToNet(vehicle), modType, level)
     end
 end
 
@@ -152,35 +145,35 @@ function Tuning.VisualMenu(vehicle)
             title = locale('spoilers'),
             icon = 'fas fa-car',
             onSelect = function()
-                Tuning.ModMenu(vehicle, 0, locale('spoilers'), 3000)
+                Tuning.ModMenu(vehicle, 0, locale('spoilers'))
             end
         },
         {
             title = locale('front_bumper'),
             icon = 'fas fa-car',
             onSelect = function()
-                Tuning.ModMenu(vehicle, 1, locale('front_bumper'), 2500)
+                Tuning.ModMenu(vehicle, 1, locale('front_bumper'))
             end
         },
         {
             title = locale('rear_bumper'),
             icon = 'fas fa-car',
             onSelect = function()
-                Tuning.ModMenu(vehicle, 2, locale('rear_bumper'), 2500)
+                Tuning.ModMenu(vehicle, 2, locale('rear_bumper'))
             end
         },
         {
             title = locale('side_skirts'),
             icon = 'fas fa-car',
             onSelect = function()
-                Tuning.ModMenu(vehicle, 3, locale('side_skirts'), 2000)
+                Tuning.ModMenu(vehicle, 3, locale('side_skirts'))
             end
         },
         {
             title = locale('exhaust'),
             icon = 'fas fa-car',
             onSelect = function()
-                Tuning.ModMenu(vehicle, 4, locale('exhaust'), 1500)
+                Tuning.ModMenu(vehicle, 4, locale('exhaust'))
             end
         },
         {
@@ -209,10 +202,11 @@ function Tuning.VisualMenu(vehicle)
     lib.showContext('visual_menu')
 end
 
-function Tuning.ModMenu(vehicle, modType, label, basePrice)
+function Tuning.ModMenu(vehicle, modType, label)
     local options = {}
     local currentMod = GetVehicleMod(vehicle, modType)
     local modCount = GetNumVehicleMods(vehicle, modType)
+    local basePrice = (Config.Tuning.visualMods[modType] and Config.Tuning.visualMods[modType].basePrice) or 0
     
     for i = -1, modCount - 1 do
         local modLabel = i == -1 and locale('stock') or locale('option_number', i + 1)
@@ -227,7 +221,7 @@ function Tuning.ModMenu(vehicle, modType, label, basePrice)
                 {label = locale('price'), value = '$' .. price}
             },
             onSelect = function()
-                Tuning.ApplyVisualMod(vehicle, modType, i, price)
+                Tuning.ApplyVisualMod(vehicle, modType, i)
             end
         })
     end
@@ -242,7 +236,7 @@ function Tuning.ModMenu(vehicle, modType, label, basePrice)
     lib.showContext('mod_selection')
 end
 
-function Tuning.ApplyVisualMod(vehicle, modType, modIndex, price)
+function Tuning.ApplyVisualMod(vehicle, modType, modIndex)
     -- Apply visual effects
     local coords = GetEntityCoords(vehicle)
     local offset = GetOffsetFromEntityInWorldCoords(vehicle, 0.0, 2.0, 0.0)
@@ -276,7 +270,7 @@ function Tuning.ApplyVisualMod(vehicle, modType, modIndex, price)
                 local props = lib.getVehicleProperties(vehicle)
                 TriggerServerEvent('mechanic:server:saveVehicleProps', VehToNet(vehicle), props)
             end
-        end, price, modType, modIndex)
+        end, VehToNet(vehicle), modType, modIndex)
     end
 end
 
@@ -292,11 +286,11 @@ function Tuning.NitroMenu(vehicle)
             icon = 'fas fa-fire',
             disabled = hasNitro,
             metadata = {
-                {label = locale('price'), value = '$5000'},
+                {label = locale('price'), value = '$' .. Config.Tuning.nitro.install[50]},
                 {label = locale('capacity'), value = '50 shots'}
             },
             onSelect = function()
-                Tuning.InstallNitro(vehicle, 50, 5000)
+                Tuning.InstallNitro(vehicle, 50)
             end
         },
         {
@@ -305,11 +299,11 @@ function Tuning.NitroMenu(vehicle)
             icon = 'fas fa-fire',
             disabled = hasNitro,
             metadata = {
-                {label = locale('price'), value = '$8000'},
+                {label = locale('price'), value = '$' .. Config.Tuning.nitro.install[100]},
                 {label = locale('capacity'), value = '100 shots'}
             },
             onSelect = function()
-                Tuning.InstallNitro(vehicle, 100, 8000)
+                Tuning.InstallNitro(vehicle, 100)
             end
         },
         {
@@ -318,11 +312,11 @@ function Tuning.NitroMenu(vehicle)
             icon = 'fas fa-fill',
             disabled = not hasNitro,
             metadata = {
-                {label = locale('price'), value = '$2000'},
+                {label = locale('price'), value = '$' .. Config.Tuning.nitro.refill},
                 {label = locale('current_level'), value = nitroLevel .. '%'}
             },
             onSelect = function()
-                Tuning.RefillNitro(vehicle, 2000)
+                Tuning.RefillNitro(vehicle)
             end
         },
         {
@@ -346,7 +340,7 @@ function Tuning.NitroMenu(vehicle)
     lib.showContext('nitro_menu')
 end
 
-function Tuning.InstallNitro(vehicle, capacity, price)
+function Tuning.InstallNitro(vehicle, capacity)
     local progress = lib.progressBar({
         duration = 15000,
         label = locale('installing_nitro'),
@@ -375,7 +369,7 @@ function Tuning.InstallNitro(vehicle, capacity, price)
                     type = 'success'
                 })
             end
-        end, VehToNet(vehicle), capacity, price)
+        end, VehToNet(vehicle), capacity, Config.Tuning.nitro.install[capacity])
     end
 end
 
