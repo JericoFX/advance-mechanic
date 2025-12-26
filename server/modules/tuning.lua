@@ -130,6 +130,7 @@ RegisterNetEvent('mechanic:server:saveVehicleProps', function(netId, props)
     local Player = Framework.GetPlayer(src)
     
     if not Player or not Validation.IsMechanic(Player) then return end
+    if not Validation.CheckRateLimit(src, 'vehicle_props', Config.Security.rateLimits.vehiclePropsMs) then return end
     
     local vehicle = Validation.GetVehicleByNetId(netId)
     if not DoesEntityExist(vehicle) then return end

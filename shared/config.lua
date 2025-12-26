@@ -84,6 +84,18 @@ Config.Maintenance = {
     maxComponentCost = 25000 -- TODO: adjust to match economy balance.
 }
 
+Config.Security = {
+    rateLimits = {
+        vehicleDeleteMs = 2000,
+        vehiclePropsMs = 1500,
+        vehicleDamageMs = 1500,
+        fluidSyncMs = 1000,
+        fluidUpdateMs = 1500,
+        shopStockMs = 2000,
+        spawnVehicleMs = 2000
+    }
+}
+
 -- Shop creation settings
 Config.ShopCreation = {
     basePrice = 100000,

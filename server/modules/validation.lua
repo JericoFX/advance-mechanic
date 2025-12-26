@@ -1,4 +1,141 @@
 local Validation = {}
+local Framework = require 'shared.framework'
+
+-- TODO(PR-MERGE-ID): update with the actual PR identifier before merge to avoid conflicts.
+local rateLimits = {}
+local allowedProps = {
+    plate = true,
+    plateIndex = true,
+    bodyHealth = true,
+    engineHealth = true,
+    fuelLevel = true,
+    dirtLevel = true,
+    color1 = true,
+    color2 = true,
+    pearlescentColor = true,
+    wheelColor = true,
+    wheels = true,
+    windowTint = true,
+    neonEnabled = true,
+    neonColor = true,
+    extras = true,
+    tyreSmokeColor = true,
+    modEngine = true,
+    modBrakes = true,
+    modTransmission = true,
+    modSuspension = true,
+    modTurbo = true,
+    modArmor = true,
+    modFrontWheels = true,
+    modBackWheels = true,
+    modHorns = true,
+    modPlateHolder = true,
+    modVanityPlate = true,
+    modTrimA = true,
+    modOrnaments = true,
+    modDashboard = true,
+    modDial = true,
+    modDoorSpeaker = true,
+    modSeats = true,
+    modSteeringWheel = true,
+    modShifterLeavers = true,
+    modAPlate = true,
+    modSpeakers = true,
+    modTrunk = true,
+    modHydrolic = true,
+    modEngineBlock = true,
+    modAirFilter = true,
+    modStruts = true,
+    modArchCover = true,
+    modAerials = true,
+    modTrimB = true,
+    modTank = true,
+    modWindows = true,
+    modLivery = true,
+    modRoof = true
+}
+
+local function isSafeKey(key)
+    if type(key) ~= 'string' then return false end
+    return allowedProps[key] or key:match('^mod%u')
+end
+
+local function sanitizeTable(value, depth)
+    if type(value) ~= 'table' then return nil end
+    if depth > 2 then return nil end
+
+    local sanitized = {}
+    local count = 0
+
+    for k, v in pairs(value) do
+        count = count + 1
+        if count > 64 then
+            return nil
+        end
+
+        local vType = type(v)
+        if vType == 'number' or vType == 'boolean' or vType == 'string' then
+            sanitized[k] = v
+        elseif vType == 'table' then
+            local nested = sanitizeTable(v, depth + 1)
+            if nested then
+                sanitized[k] = nested
+            end
+        end
+    end
+
+    return sanitized
+end
+
+function Validation.ClampNumber(value, minValue, maxValue, fallback)
+    if type(value) ~= 'number' then
+        return fallback
+    end
+    if minValue and value < minValue then
+        return minValue
+    end
+    if maxValue and value > maxValue then
+        return maxValue
+    end
+    return value
+end
+
+function Validation.IsValidCoords(coords)
+    if type(coords) == 'vector3' or type(coords) == 'vector4' then
+        return true
+    end
+    if type(coords) ~= 'table' then return false end
+    return type(coords.x) == 'number' and type(coords.y) == 'number' and type(coords.z) == 'number'
+end
+
+function Validation.NormalizeCoords(coords)
+    if type(coords) == 'vector3' then
+        return coords
+    end
+    if type(coords) == 'vector4' then
+        return vec3(coords.x, coords.y, coords.z)
+    end
+    if type(coords) ~= 'table' then return nil end
+    if type(coords.x) ~= 'number' or type(coords.y) ~= 'number' or type(coords.z) ~= 'number' then
+        return nil
+    end
+    return vec3(coords.x, coords.y, coords.z)
+end
+
+function Validation.CheckRateLimit(source, key, intervalMs)
+    if not source or not key or type(intervalMs) ~= 'number' then
+        return false
+    end
+
+    rateLimits[source] = rateLimits[source] or {}
+    local now = GetGameTimer()
+    local last = rateLimits[source][key] or 0
+    if now - last < intervalMs then
+        return false
+    end
+    rateLimits[source][key] = now
+    return true
+end
 
 function Validation.IsNumberInRange(value, minValue, maxValue)
     if type(value) ~= 'number' then return false end
@@ -9,6 +146,10 @@ end
 
 function Validation.IsMechanic(player)
     return player and player.PlayerData and player.PlayerData.job and player.PlayerData.job.name == Config.JobName
+end
+
+function Validation.IsAdmin(source)
+    return Framework.HasPermission(source, 'admin')
 end
 
 function Validation.GetVehicleByNetId(netId)
@@ -55,8 +196,57 @@ end
 
 function Validation.SanitizeProps(props)
     if type(props) ~= 'table' then return nil end
-    -- TODO: enforce a whitelist of allowed properties.
-    return props
+    local sanitized = {}
+
+    for key, value in pairs(props) do
+        if isSafeKey(key) then
+            local valueType = type(value)
+            if valueType == 'number' or valueType == 'boolean' or valueType == 'string' then
+                sanitized[key] = value
+            elseif valueType == 'table' then
+                local nested = sanitizeTable(value, 1)
+                if nested then
+                    sanitized[key] = nested
+                end
+            end
+        end
+    end
+
+    if next(sanitized) == nil then
+        return nil
+    end
+
+    return sanitized
+end
+
+function Validation.NormalizeFluidData(data)
+    if type(data) ~= 'table' then return nil end
+
+    return {
+        oilLevel = Validation.ClampNumber(tonumber(data.oilLevel), 0, 100, 100),
+        coolantLevel = Validation.ClampNumber(tonumber(data.coolantLevel), 0, 100, 100),
+        brakeFluidLevel = Validation.ClampNumber(tonumber(data.brakeFluidLevel), 0, 100, 100),
+        transmissionFluidLevel = Validation.ClampNumber(tonumber(data.transmissionFluidLevel), 0, 100, 100),
+        powerSteeringLevel = Validation.ClampNumber(tonumber(data.powerSteeringLevel), 0, 100, 100),
+        tireWear = Validation.ClampNumber(tonumber(data.tireWear), 0, 100, 0),
+        batteryLevel = Validation.ClampNumber(tonumber(data.batteryLevel), 0, 100, 100),
+        gearBoxHealth = Validation.ClampNumber(tonumber(data.gearBoxHealth), 0, 100, 100)
+    }
+end
+
+function Validation.NormalizeImpactData(data)
+    if type(data) ~= 'table' then return nil end
+
+    local side = type(data.side) == 'string' and data.side or ''
+    if #side > 32 then
+        side = ''
+    end
+
+    return {
+        side = side,
+        severity = Validation.ClampNumber(tonumber(data.severity), 0, 10, 0),
+        wheelDamage = data.wheelDamage == true
+    }
 end
 
 function Validation.CalculatePerformanceModPrice(modType, level)
