@@ -3,6 +3,25 @@ local Database = require 'server.modules.database'
 local Framework = require 'shared.framework'
 local Validation = require 'server.modules.validation'
 
+local function canAccessVehicle(source, vehicle, plate, requireMechanic)
+    local Player = Framework.GetPlayer(source)
+    if not Player then return false end
+
+    if not vehicle or not DoesEntityExist(vehicle) then return false end
+    if not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then return false end
+
+    if requireMechanic and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+        return false
+    end
+
+    local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+    if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+        return false
+    end
+
+    return true
+end
+
 -- Get vehicle inspection data
 function Vehicles.GetInspectionData(plate)
     local query = 'SELECT inspection_data FROM player_vehicles WHERE plate = ?'
@@ -274,7 +293,24 @@ lib.callback.register('mechanic:server:getVehicleFluidData', function(source, pl
 end)
 
 lib.callback.register('mechanic:server:updateVehicleFluidData', function(source, plate, fluidData)
-    return Vehicles.UpdateFluidData(plate, fluidData)
+    local Player = Framework.GetPlayer(source)
+    if not Player or type(plate) ~= 'string' then return false end
+
+    local vehicle = Vehicles.GetVehicleByPlate(plate)
+    if not vehicle then return false end
+
+    if not Validation.CheckRateLimit(source, 'fluid_update', Config.Security.rateLimits.fluidUpdateMs) then
+        return false
+    end
+
+    if not canAccessVehicle(source, vehicle, plate, false) then
+        return false
+    end
+
+    local normalized = Validation.NormalizeFluidData(fluidData)
+    if not normalized then return false end
+
+    return Vehicles.UpdateFluidData(plate, normalized)
 end)
 
 -- Events
@@ -283,20 +319,47 @@ RegisterNetEvent('mechanic:server:updateVehicleColor', function(plate, colorType
 end)
 
 RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, impactData)
-    -- Add source coords for nearby notification
+    if type(plate) ~= 'string' then return end
+
+    if not Validation.CheckRateLimit(source, 'vehicle_damage', Config.Security.rateLimits.vehicleDamageMs) then
+        return
+    end
+
+    local vehicle = Vehicles.GetVehicleByPlate(plate)
+    if not vehicle or not DoesEntityExist(vehicle) then return end
+
+    if not Validation.IsPlayerNearEntity(source, vehicle, 15.0) then return end
+
     local ped = GetPlayerPed(source)
-    impactData.coords = GetEntityCoords(ped)
+    if GetVehiclePedIsIn(ped, false) ~= vehicle and NetworkGetEntityOwner(vehicle) ~= source then
+        return
+    end
+
+    local normalizedImpact = Validation.NormalizeImpactData(impactData)
+    if not normalizedImpact then return end
+
+    -- Add source coords for nearby notification
+    normalizedImpact.coords = GetEntityCoords(ped)
     
     MySQL.update('UPDATE player_vehicles SET damage_data = ? WHERE plate = ?', {
-        json.encode(impactData),
+        json.encode(normalizedImpact),
         plate
     })
 
-    Vehicles.ProcessDamage(plate, impactData)
+    Vehicles.ProcessDamage(plate, normalizedImpact)
 end)
 
 RegisterNetEvent('mechanic:server:repairVehiclePart', function(plate, part, amount)
-    if Vehicles.RepairPart(source, plate, part, amount) then
+    if type(plate) ~= 'string' then return end
+    if type(part) ~= 'string' or not Config.Inspection.checkPoints[part] then return end
+
+    local numericAmount = tonumber(amount)
+    if not Validation.IsNumberInRange(numericAmount, 1, 100) then return end
+
+    local vehicle = Vehicles.GetVehicleByPlate(plate)
+    if vehicle and not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then return end
+
+    if Vehicles.RepairPart(source, plate, part, numericAmount) then
         TriggerClientEvent('ox_lib:notify', source, {
             title = locale('repair_successful'),
             type = 'success'
@@ -306,7 +369,25 @@ end)
 
 -- Sync vehicle properties to clients
 RegisterNetEvent('mechanic:server:syncVehicleProperties', function(netId, props)
-    TriggerClientEvent('mechanic:client:syncVehicleProperties', -1, netId, props)
+    local Player = Framework.GetPlayer(source)
+    if not Player then return end
+
+    if not Validation.CheckRateLimit(source, 'vehicle_props', Config.Security.rateLimits.vehiclePropsMs) then
+        return
+    end
+
+    local vehicle = Validation.GetVehicleByNetId(netId)
+    if not vehicle then return end
+
+    local plate = GetVehicleNumberPlateText(vehicle)
+    if not canAccessVehicle(source, vehicle, plate, false) then
+        return
+    end
+
+    local sanitizedProps = Validation.SanitizeProps(props)
+    if not sanitizedProps then return end
+
+    TriggerClientEvent('mechanic:client:syncVehicleProperties', -1, netId, sanitizedProps)
 end)
 
 -- Sincronización de niveles de fluidos
@@ -321,23 +402,28 @@ RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
     local vehicle = Vehicles.GetVehicleByPlate(plate)
     
     if vehicle and DoesEntityExist(vehicle) then
+        local Player = Framework.GetPlayer(src)
+        if not Player then return end
+
+        if not Validation.CheckRateLimit(src, 'fluid_sync', Config.Security.rateLimits.fluidSyncMs) then
+            return
+        end
+
+        local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+        if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(src) then
+            return
+        end
+
         local vehicleCoords = GetEntityCoords(vehicle)
         local playerCoords = GetEntityCoords(ped)
         
         -- Solo permitir sincronización si está cerca del vehículo
         if #(vehicleCoords - playerCoords) < 10.0 then
-            -- Validar niveles de fluidos (anti-cheat)
-            fluidData.oilLevel = math.max(0, math.min(100, fluidData.oilLevel or 100))
-            fluidData.coolantLevel = math.max(0, math.min(100, fluidData.coolantLevel or 100))
-            fluidData.brakeFluidLevel = math.max(0, math.min(100, fluidData.brakeFluidLevel or 100))
-            fluidData.transmissionFluidLevel = math.max(0, math.min(100, fluidData.transmissionFluidLevel or 100))
-            fluidData.powerSteeringLevel = math.max(0, math.min(100, fluidData.powerSteeringLevel or 100))
-            fluidData.tireWear = math.max(0, math.min(100, fluidData.tireWear or 0))
-            fluidData.batteryLevel = math.max(0, math.min(100, fluidData.batteryLevel or 100))
-            fluidData.gearBoxHealth = math.max(0, math.min(100, fluidData.gearBoxHealth or 100))
+            local normalized = Validation.NormalizeFluidData(fluidData)
+            if not normalized then return end
             
             -- Actualizar en base de datos
-            Vehicles.UpdateFluidData(plate, fluidData)
+            Vehicles.UpdateFluidData(plate, normalized)
             
             -- Log para debugging
             if Config.Debug then

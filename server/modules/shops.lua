@@ -2,7 +2,136 @@ local Shops = {}
 local Database = require 'server.modules.database'
 local Business = require 'server.modules.business'
 local Framework = require 'shared.framework'
+local Validation = require 'server.modules.validation'
 local shopCache = {}
+
+local function canManageShop(source, shopId, permission)
+    local Player = Framework.GetPlayer(source)
+    if not Player then return false end
+
+    local citizenid = Player.PlayerData.citizenid
+    local shop = Shops.GetById(shopId)
+    if not shop then return false end
+
+    if shop.owner and shop.owner == citizenid then
+        return true
+    end
+
+    if Business.isBusinessBoss(citizenid, shopId) then
+        return true
+    end
+
+    if permission and Business.hasBusinessPermission(citizenid, shopId, permission) then
+        return true
+    end
+
+    local rank = Business.getEmployeeRank(citizenid, shopId)
+    if rank >= Config.BossGrade then
+        return true
+    end
+
+    local permissions = Config.Employees.permissions[rank]
+    if permissions and permission and permissions[permission] then
+        return true
+    end
+
+    return false
+end
+
+local function isAllowedServiceModel(model)
+    if type(model) ~= 'string' then return false end
+    local lower = model:lower()
+    for _, data in pairs(Config.Towing.vehicles) do
+        if type(data.model) == 'string' and data.model:lower() == lower then
+            return true
+        end
+        if type(data.model) == 'number' and data.model == joaat(lower) then
+            return true
+        end
+        if data.models then
+            for _, alias in ipairs(data.models) do
+                if type(alias) == 'string' and alias:lower() == lower then
+                    return true
+                end
+                if type(alias) == 'number' and alias == joaat(lower) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function isCoordsNearShopSpawn(coords)
+    if not Validation.IsValidCoords(coords) then return false end
+    local normalized = Validation.NormalizeCoords(coords)
+    if not normalized then return false end
+
+    for _, shop in ipairs(shopCache) do
+        if shop.vehicleSpawns then
+            for _, spawnType in pairs(shop.vehicleSpawns) do
+                for _, spawnPoint in ipairs(spawnType) do
+                    local spawnCoords = Validation.NormalizeCoords(spawnPoint)
+                    if spawnCoords and #(spawnCoords - normalized) <= 7.5 then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    return false
+end
+
+local function buildDefaultStock()
+    local stock = {}
+    for _, itemData in pairs(Config.MaintenanceItems) do
+        stock[itemData.item] = {
+            label = itemData.label,
+            price = math.floor(itemData.price or 0),
+            quantity = 0
+        }
+    end
+    for _, partData in pairs(Config.VehicleParts) do
+        stock[partData.item] = {
+            label = partData.label,
+            price = math.floor((partData.price or 0) * Config.Economy.partMarkup),
+            quantity = 0
+        }
+    end
+    for _, toolCategory in pairs(Config.Tools) do
+        for _, tool in ipairs(toolCategory) do
+            stock[tool.item] = {
+                label = tool.label,
+                price = 500,
+                quantity = 0
+            }
+        end
+    end
+    return stock
+end
+
+local function getShopStorage(shop)
+    if not shop.storage or type(shop.storage) ~= 'table' then
+        shop.storage = {}
+    end
+    return shop.storage
+end
+
+local function getShopStock(shop)
+    local storage = getShopStorage(shop)
+    if type(storage.stock) ~= 'table' then
+        storage.stock = buildDefaultStock()
+    else
+        local defaults = buildDefaultStock()
+        for itemName, data in pairs(defaults) do
+            if not storage.stock[itemName] then
+                storage.stock[itemName] = data
+            end
+        end
+    end
+    return storage.stock
+end
 
 -- Load all shops from database
 function Shops.LoadAll()
@@ -38,6 +167,51 @@ function Shops.Create(data, source)
             type = 'error'
         })
         return false
+    end
+
+    if not Config.ShopCreation.requiresAdmin then
+        local job = Player.PlayerData.job
+        local grade = job and (job.grade or (job.grade and job.grade.level)) or 0
+        if not Validation.IsMechanic(Player) or grade < Config.BossGrade then
+            TriggerClientEvent('ox_lib:notify', source, {
+                title = locale('no_permission'),
+                type = 'error'
+            })
+            return false
+        end
+    end
+
+    if type(data) ~= 'table' or type(data.name) ~= 'string' or #data.name < 1 or #data.name > 50 then
+        return false
+    end
+
+    if type(data.price) ~= 'number' or data.price < 0 then
+        return false
+    end
+
+    if type(data.zones) ~= 'table' then return false end
+    for zoneName, _ in pairs(Config.ShopCreation.requiredZones) do
+        local coords = data.zones[zoneName]
+        if not Validation.IsValidCoords(coords) then
+            return false
+        end
+    end
+
+    if type(data.lifts) ~= 'table' or #data.lifts > Config.ShopCreation.maxLifts then
+        return false
+    end
+
+    if type(data.vehicleSpawns) ~= 'table' then return false end
+    for spawnType, spawnConfig in pairs(Config.ShopCreation.vehicleSpawns) do
+        local spawns = data.vehicleSpawns[spawnType]
+        if type(spawns) ~= 'table' or #spawns > spawnConfig.max then
+            return false
+        end
+        for _, spawn in ipairs(spawns) do
+            if not Validation.IsValidCoords(spawn) then
+                return false
+            end
+        end
     end
     
     local shopId = Database.CreateShop(data)
@@ -172,6 +346,22 @@ function Shops.SpawnServiceVehicle(source, model, coords)
         })
         return false
     end
+
+    if not Validation.CheckRateLimit(source, 'spawn_vehicle', Config.Security.rateLimits.spawnVehicleMs) then
+        return false
+    end
+
+    if not isAllowedServiceModel(model) then
+        return false
+    end
+
+    if not Validation.IsValidCoords(coords) then
+        return false
+    end
+
+    if not isCoordsNearShopSpawn(coords) then
+        return false
+    end
     
     -- Create vehicle
     local vehicle = CreateVehicle(joaat(model), coords.x, coords.y, coords.z, coords.w or 0.0, true, true)
@@ -274,6 +464,9 @@ end)
 
 -- Employee management callbacks
 lib.callback.register('mechanic:server:hireEmployee', function(source, shopId, targetId, grade, wage)
+    if not canManageShop(source, shopId, 'manage_employees') then
+        return false, locale('no_permission')
+    end
     local success, message = Shops.AddEmployee(shopId, targetId, grade)
     if success then
         -- El wage se establece en el Business.hireEmployee
@@ -283,6 +476,9 @@ lib.callback.register('mechanic:server:hireEmployee', function(source, shopId, t
 end)
 
 lib.callback.register('mechanic:server:changeEmployeeGrade', function(source, shopId, targetCitizenId, newGrade)
+    if not canManageShop(source, shopId, 'manage_employees') then
+        return false, locale('no_permission')
+    end
     if Shops.ChangeEmployeeGrade(shopId, targetCitizenId, newGrade) then
         return true, locale('grade_changed')
     end
@@ -290,6 +486,9 @@ lib.callback.register('mechanic:server:changeEmployeeGrade', function(source, sh
 end)
 
 lib.callback.register('mechanic:server:changeEmployeeWage', function(source, shopId, targetCitizenId, newWage)
+    if not canManageShop(source, shopId, 'manage_employees') then
+        return false, locale('no_permission')
+    end
     if Shops.ChangeEmployeeWage(shopId, targetCitizenId, newWage) then
         return true, locale('wage_changed')
     end
@@ -297,6 +496,9 @@ lib.callback.register('mechanic:server:changeEmployeeWage', function(source, sho
 end)
 
 lib.callback.register('mechanic:server:fireEmployee', function(source, shopId, targetCitizenId)
+    if not canManageShop(source, shopId, 'manage_employees') then
+        return false, locale('no_permission')
+    end
     if Shops.RemoveEmployee(shopId, targetCitizenId) then
         return true, locale('employee_fired')
     end
@@ -304,14 +506,23 @@ lib.callback.register('mechanic:server:fireEmployee', function(source, shopId, t
 end)
 
 lib.callback.register('mechanic:server:getEmployees', function(source, shopId)
+    if not canManageShop(source, shopId, 'manage_employees') then
+        return {}
+    end
     return Shops.GetEmployees(shopId)
 end)
 
 lib.callback.register('mechanic:server:togglePayroll', function(source, shopId)
+    if not canManageShop(source, shopId, 'manage_employees') then
+        return false, nil
+    end
     return Shops.TogglePayroll(shopId)
 end)
 
 lib.callback.register('mechanic:server:getPayrollSettings', function(source, shopId)
+    if not canManageShop(source, shopId, 'manage_employees') then
+        return nil
+    end
     local shop = Shops.GetById(shopId)
     if shop then
         return {enabled = shop.payrollEnabled, frequency = 'weekly', payment_day = 'friday'}
@@ -332,21 +543,66 @@ lib.callback.register('mechanic:server:hasEmployeePermission', function(source, 
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
     
-    local citizenid = Player.PlayerData.citizenid
-    local rank = Business.getEmployeeRank(citizenid, shopId)
-    
-    -- Verificar si es dueño o jefe (rank 4)
-    if rank >= Config.BossGrade then
-        return true
+    return canManageShop(source, shopId, permission)
+end)
+
+lib.callback.register('mechanic:server:getShopStock', function(source, shopId)
+    if not canManageShop(source, shopId, 'manage_inventory') then
+        return nil
     end
-    
-    -- Verificar permisos específicos por grade
-    local permissions = Config.Employees.permissions[rank]
-    if permissions and permissions[permission] then
-        return true
+
+    if not Validation.CheckRateLimit(source, 'shop_stock', Config.Security.rateLimits.shopStockMs) then
+        return nil
     end
-    
-    return false
+
+    local shop = Shops.GetById(shopId)
+    if not shop then return nil end
+
+    local stock = getShopStock(shop)
+    Database.UpdateShopStorage(shopId, shop.storage)
+    return stock
+end)
+
+lib.callback.register('mechanic:server:restockItem', function(source, shopId, itemName, quantity, totalCost)
+    if not canManageShop(source, shopId, 'manage_inventory') then
+        return false
+    end
+
+    if not Validation.CheckRateLimit(source, 'shop_stock', Config.Security.rateLimits.shopStockMs) then
+        return false
+    end
+
+    local numericQuantity = tonumber(quantity)
+    local numericCost = tonumber(totalCost)
+    if not Validation.IsNumberInRange(numericQuantity, 1, 100) then
+        return false
+    end
+
+    if not Validation.IsNumberInRange(numericCost, 1, 1000000) then
+        return false
+    end
+
+    local shop = Shops.GetById(shopId)
+    if not shop then return false end
+
+    local stock = getShopStock(shop)
+    if not stock[itemName] then
+        return false
+    end
+
+    local funds = Business.getBusinessFunds(shopId)
+    if funds < numericCost then
+        return false
+    end
+
+    if not Business.updateBusinessFunds(shopId, numericCost, true) then
+        return false
+    end
+
+    stock[itemName].quantity = (stock[itemName].quantity or 0) + numericQuantity
+    Database.UpdateShopStorage(shopId, shop.storage)
+
+    return true
 end)
 
 -- Events

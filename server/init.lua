@@ -125,10 +125,31 @@ end)
 
 -- Vehicle spawn handler
 RegisterNetEvent('mechanic:server:deleteVehicle', function(netId)
-    local vehicle = NetworkGetEntityFromNetworkId(netId)
-    if DoesEntityExist(vehicle) then
-        DeleteEntity(vehicle)
+    local src = source
+    local Player = Framework.GetPlayer(src)
+    if not Player then return end
+
+    if not Validation.IsMechanic(Player) and not Validation.IsAdmin(src) then
+        return
     end
+
+    if not Validation.CheckRateLimit(src, 'vehicle_delete', Config.Security.rateLimits.vehicleDeleteMs) then
+        return
+    end
+
+    local vehicle = Validation.GetVehicleByNetId(netId)
+    if not vehicle then return end
+    if not Validation.IsPlayerNearEntity(src, vehicle, 10.0) then return end
+
+    local plate = GetVehicleNumberPlateText(vehicle)
+    local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+    local isDriver = GetPedInVehicleSeat(vehicle, -1) == GetPlayerPed(src)
+
+    if not isOwner and not isDriver and not Validation.IsAdmin(src) then
+        return
+    end
+
+    DeleteEntity(vehicle)
 end)
 
 -- Add mechanic job if not exists
@@ -185,12 +206,28 @@ end)
 
 -- Additional callbacks for new features
 lib.callback.register('mechanic:server:getVehicleData', function(source, plate)
-    local result = MySQL.query.await('SELECT * FROM player_vehicles WHERE plate = ?', {plate})
+    local Player = Framework.GetPlayer(source)
+    if not Player or not Validation.IsMechanic(Player) then return nil end
+    if type(plate) ~= 'string' then return nil end
+
+    if not Validation.CheckRateLimit(source, 'vehicle_data', Config.Security.rateLimits.vehiclePropsMs) then
+        return nil
+    end
+
+    local vehicle = Validation.GetVehicleByPlate(plate)
+    if vehicle and not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then
+        return nil
+    end
+
+    local result = MySQL.query.await('SELECT plate, mileage, maintenance_history, inspection_data, fluid_data, last_diagnostic, citizenid FROM player_vehicles WHERE plate = ?', {plate})
     
     if result and result[1] then
         local vehicleData = result[1]
         vehicleData.maintenanceHistory = json.decode(vehicleData.maintenance_history or '[]')
         vehicleData.inspectionData = json.decode(vehicleData.inspection_data or '{}')
+        vehicleData.fluidData = json.decode(vehicleData.fluid_data or '{}')
+        vehicleData.lastDiagnostic = json.decode(vehicleData.last_diagnostic or '{}')
+        vehicleData.owner = vehicleData.citizenid
         return vehicleData
     end
     

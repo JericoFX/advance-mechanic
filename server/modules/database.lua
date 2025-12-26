@@ -8,6 +8,7 @@ function Database.GetAllShops()
             shop.zones = json.decode(shop.zones)
             shop.lifts = json.decode(shop.lifts)
             shop.vehicleSpawns = json.decode(shop.vehicleSpawns)
+            shop.storage = json.decode(shop.storage or '{}')
         end
     end
     return result or {}
@@ -25,6 +26,11 @@ function Database.CreateShop(data)
     local query = 'INSERT INTO mechanic_shops (name, price, zones, lifts, vehicleSpawns) VALUES (?, ?, ?, ?, ?)'
     local params = {data.name, data.price, json.encode(data.zones), json.encode(data.lifts), json.encode(data.vehicleSpawns)}
     return MySQL.insert.await(query, params)
+end
+
+function Database.UpdateShopStorage(shopId, storage)
+    local query = 'UPDATE mechanic_shops SET storage = ? WHERE id = ?'
+    return MySQL.update.await(query, {json.encode(storage or {}), shopId}) > 0
 end
 
 -- Updates the vehicle data, including colors and other properties
