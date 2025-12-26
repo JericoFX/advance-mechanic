@@ -30,7 +30,7 @@ function Damage.StartMonitoring(vehicle)
                 end
             end
             
-            Wait(100)
+            Wait(200)
         end
         
         monitoringThread = nil
@@ -147,7 +147,7 @@ function Damage.ApplySteeringCorrection()
     steeringThread = CreateThread(function()
         while cache.vehicle == vehicle do
             SetVehicleSteerBias(vehicle, misalignment.bias)
-            Wait(0)
+            Wait(50)
         end
         steeringThread = nil
     end)

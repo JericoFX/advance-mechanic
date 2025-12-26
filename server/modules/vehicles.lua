@@ -1,6 +1,7 @@
 local Vehicles = {}
 local Database = require 'server.modules.database'
 local Framework = require 'shared.framework'
+local Validation = require 'server.modules.validation'
 
 -- Get vehicle inspection data
 function Vehicles.GetInspectionData(plate)
@@ -28,7 +29,19 @@ function Vehicles.GetFluidData(plate)
     local result = MySQL.query.await(query, {plate})
     
     if result and result[1] and result[1].fluid_data then
-        return json.decode(result[1].fluid_data)
+        local fluidData = json.decode(result[1].fluid_data)
+        return {
+            oilLevel = fluidData.oilLevel or 100,
+            coolantLevel = fluidData.coolantLevel or 100,
+            brakeFluidLevel = fluidData.brakeFluidLevel or 100,
+            transmissionFluidLevel = fluidData.transmissionFluidLevel or 100,
+            powerSteeringLevel = fluidData.powerSteeringLevel or 100,
+            tireWear = fluidData.tireWear or 0,
+            batteryLevel = fluidData.batteryLevel or 100,
+            gearBoxHealth = fluidData.gearBoxHealth or 100,
+            lastUpdate = fluidData.lastUpdate or os.time(),
+            lastUpdated = fluidData.lastUpdated or fluidData.lastUpdate or os.time()
+        }
     end
     
     -- Return default fluid data
@@ -38,6 +51,10 @@ function Vehicles.GetFluidData(plate)
         brakeFluidLevel = 100,
         transmissionFluidLevel = 100,
         powerSteeringLevel = 100,
+        tireWear = 0,
+        batteryLevel = 100,
+        gearBoxHealth = 100,
+        lastUpdate = os.time(),
         lastUpdated = os.time()
     }
 end
@@ -45,7 +62,8 @@ end
 -- Update vehicle fluid data
 function Vehicles.UpdateFluidData(plate, data)
     local query = 'UPDATE player_vehicles SET fluid_data = ? WHERE plate = ?'
-    data.lastUpdated = os.time()
+    data.lastUpdate = os.time()
+    data.lastUpdated = data.lastUpdate
     return MySQL.update.await(query, {json.encode(data), plate}) > 0
 end
 
@@ -162,7 +180,7 @@ function Vehicles.RepairPart(source, plate, part, amount)
     if not Player then return false end
     
     -- Check if mechanic
-    if Player.PlayerData.job.name ~= Config.JobName then
+    if not Validation.IsMechanic(Player) then
         TriggerClientEvent('ox_lib:notify', source, {
             title = locale('not_mechanic'),
             type = 'error'
@@ -198,17 +216,24 @@ function Vehicles.PurchasePart(source, partId, quantity, totalPrice)
     local partData = Config.VehicleParts[partId]
     if not partData then return false end
     
+    if not Validation.IsNumberInRange(quantity, 1, Config.Billing.parts.maxQuantity) then
+        return false
+    end
+
+    local unitPrice = math.floor(partData.price * Config.Economy.partMarkup)
+    local calculatedTotal = unitPrice * quantity
+
     -- Check money
     local money = Config.Economy.payWithCash and Player.PlayerData.money.cash or Player.PlayerData.money.bank
-    if money < totalPrice then
+    if money < calculatedTotal then
         return false
     end
     
     -- Remove money
     if Config.Economy.payWithCash then
-        Player.Functions.RemoveMoney('cash', totalPrice)
+        Player.Functions.RemoveMoney('cash', calculatedTotal)
     else
-        Player.Functions.RemoveMoney('bank', totalPrice)
+        Player.Functions.RemoveMoney('bank', calculatedTotal)
     end
     
     -- Give items
@@ -223,9 +248,9 @@ function Vehicles.PurchasePart(source, partId, quantity, totalPrice)
     
     -- Refund if failed
     if Config.Economy.payWithCash then
-        Player.Functions.AddMoney('cash', totalPrice)
+        Player.Functions.AddMoney('cash', calculatedTotal)
     else
-        Player.Functions.AddMoney('bank', totalPrice)
+        Player.Functions.AddMoney('bank', calculatedTotal)
     end
     
     return false
@@ -262,6 +287,11 @@ RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, impactData)
     local ped = GetPlayerPed(source)
     impactData.coords = GetEntityCoords(ped)
     
+    MySQL.update('UPDATE player_vehicles SET damage_data = ? WHERE plate = ?', {
+        json.encode(impactData),
+        plate
+    })
+
     Vehicles.ProcessDamage(plate, impactData)
 end)
 
@@ -302,6 +332,9 @@ RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
             fluidData.brakeFluidLevel = math.max(0, math.min(100, fluidData.brakeFluidLevel or 100))
             fluidData.transmissionFluidLevel = math.max(0, math.min(100, fluidData.transmissionFluidLevel or 100))
             fluidData.powerSteeringLevel = math.max(0, math.min(100, fluidData.powerSteeringLevel or 100))
+            fluidData.tireWear = math.max(0, math.min(100, fluidData.tireWear or 0))
+            fluidData.batteryLevel = math.max(0, math.min(100, fluidData.batteryLevel or 100))
+            fluidData.gearBoxHealth = math.max(0, math.min(100, fluidData.gearBoxHealth or 100))
             
             -- Actualizar en base de datos
             Vehicles.UpdateFluidData(plate, fluidData)
