@@ -51,7 +51,8 @@ Config.Billing = {
         minAmount = 1,
         maxAmount = 100000 -- TODO: adjust to match economy balance.
     },
-    maxInvoiceTotal = 250000 -- TODO: adjust to match economy balance.
+    maxInvoiceTotal = 250000, -- TODO: adjust to match economy balance.
+    maxDistance = 5.0 -- TODO: adjust mechanic billing proximity requirement.
 }
 
 Config.Tuning = {
@@ -92,7 +93,12 @@ Config.Security = {
         fluidSyncMs = 1000,
         fluidUpdateMs = 1500,
         shopStockMs = 2000,
-        spawnVehicleMs = 2000
+        spawnVehicleMs = 2000,
+        missionRequestMs = 2000,
+        missionCompleteMs = 2000,
+        billingMs = 2000,
+        diagnosticReportMs = 2000,
+        repairComponentMs = 2000
     }
 }
 
@@ -223,6 +229,10 @@ Config.Towing = {
 Config.NPCMissions = {
     enabled = true,
     cooldown = 300, -- 5 minutes between missions
+    minDuration = 30, -- TODO: adjust to match desired mission duration validation.
+    completionRadius = 10.0, -- TODO: adjust to match mission completion proximity.
+    requiredEngineHealth = 900.0, -- TODO: adjust to match repair completion requirement.
+    requiredBodyHealth = 900.0, -- TODO: adjust to match repair completion requirement.
     locations = {
         {coords = vec4(25.73, -1347.27, 29.5, 270.0), radius = 50.0},
         {coords = vec4(-354.37, -135.4, 39.01, 70.0), radius = 50.0},

@@ -2,6 +2,16 @@ local Billing = {}
 local Framework = require 'shared.framework'
 local Validation = require 'server.modules.validation'
 
+local function isPlayerNearTarget(source, targetId, maxDistance)
+    local sourcePed = GetPlayerPed(source)
+    local targetPed = GetPlayerPed(targetId)
+    if not sourcePed or not targetPed then return false end
+    if not DoesEntityExist(sourcePed) or not DoesEntityExist(targetPed) then return false end
+    local sourceCoords = GetEntityCoords(sourcePed)
+    local targetCoords = GetEntityCoords(targetPed)
+    return #(sourceCoords - targetCoords) <= (maxDistance or 5.0)
+end
+
 lib.callback.register('mechanic:server:sendInvoice', function(source, invoice)
     local src = source
     local Player = Framework.GetPlayer(src)
@@ -15,6 +25,14 @@ lib.callback.register('mechanic:server:sendInvoice', function(source, invoice)
 
     local Target = Framework.GetPlayer(normalized.targetPlayer)
     if not Target then return false end
+
+    if not Validation.CheckRateLimit(src, 'billing_invoice', Config.Security.rateLimits.billingMs) then
+        return false
+    end
+
+    if not isPlayerNearTarget(src, normalized.targetPlayer, Config.Billing.maxDistance) then
+        return false
+    end
     
     -- Create detailed invoice description
     local description = 'Mechanic Invoice\n'
@@ -61,6 +79,14 @@ lib.callback.register('mechanic:server:sendQuickBill', function(source, targetId
     if not Player or not Target then return false end
     
     if not Validation.IsMechanic(Player) then
+        return false
+    end
+
+    if not Validation.CheckRateLimit(src, 'billing_quick', Config.Security.rateLimits.billingMs) then
+        return false
+    end
+
+    if not isPlayerNearTarget(src, targetId, Config.Billing.maxDistance) then
         return false
     end
 

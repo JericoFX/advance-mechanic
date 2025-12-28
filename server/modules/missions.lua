@@ -1,8 +1,10 @@
 local Missions = {}
 local Framework = require 'shared.framework'
+local Validation = require 'server.modules.validation'
 
 local activeMissions = {}
 local missionCounter = 0
+local missionCooldowns = {}
 
 local function removeMissionForPlayer(playerId)
     if not playerId then return end
@@ -19,6 +21,23 @@ end
 function Missions.Generate(source)
     local Player = Framework.GetPlayer(source)
     if not Player or Player.PlayerData.job.name ~= Config.JobName then return false end
+
+    if not Config.NPCMissions.enabled then
+        return false
+    end
+
+    if not Validation.CheckRateLimit(source, 'mission_request', Config.Security.rateLimits.missionRequestMs) then
+        return false
+    end
+
+    if activeMissions[source] then
+        return false
+    end
+
+    local lastMissionAt = missionCooldowns[source] or 0
+    if (os.time() - lastMissionAt) < Config.NPCMissions.cooldown then
+        return false
+    end
     
     local locations = Config.NPCMissions.locations
     local location = locations[math.random(#locations)]
@@ -33,10 +52,12 @@ function Missions.Generate(source)
         description = locale('repair_mission_description', vehicleModel),
         id = ('mission_%d'):format(missionCounter),
         player = source,
-        startedAt = os.time()
+        startedAt = os.time(),
+        radius = location.radius or Config.NPCMissions.completionRadius
     }
 
     activeMissions[source] = mission
+    missionCooldowns[source] = os.time()
     TriggerClientEvent('mechanic:client:newMission', source, mission)
     return mission
 end
@@ -45,9 +66,27 @@ end
 function Missions.Complete(source, success)
     local Player = Framework.GetPlayer(source)
     if not Player or Player.PlayerData.job.name ~= Config.JobName then return false end
+
+    if not Validation.CheckRateLimit(source, 'mission_complete', Config.Security.rateLimits.missionCompleteMs) then
+        return false
+    end
     
-    local mission = removeMissionForPlayer(source)
+    local mission = activeMissions[source]
     if not mission then return false end
+
+    if success == true then
+        local minDuration = Config.NPCMissions.minDuration or 0
+        if os.time() - (mission.startedAt or 0) < minDuration then
+            return false
+        end
+
+        local radius = mission.radius or Config.NPCMissions.completionRadius
+        if not Validation.IsPlayerNearCoords(source, mission.coords, radius) then
+            return false
+        end
+    end
+
+    removeMissionForPlayer(source)
 
     if success then
         Player.Functions.AddMoney('bank', mission.payout)
@@ -62,6 +101,8 @@ function Missions.Complete(source, success)
             type = 'error'
         })
     end
+
+    TriggerClientEvent('mechanic:client:missionAccomplished', source, success == true)
 
     return true
 end

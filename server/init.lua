@@ -9,6 +9,10 @@ local Missions = require 'server.modules.missions'
 local Billing = require 'server.modules.billing'
 local Tuning = require 'server.modules.tuning'
 
+AddEventHandler('playerDropped', function()
+    Validation.ClearRateLimit(source)
+end)
+
 -- Initialize database tables on resource start
 CreateThread(function()
     -- Create mechanic_shops table if not exists
@@ -284,6 +288,23 @@ lib.callback.register('mechanic:server:generateDiagnosticReport', function(sourc
     if not Player or not Validation.IsMechanic(Player) then
         return false
     end
+
+    if not Validation.CheckRateLimit(src, 'diagnostic_report', Config.Security.rateLimits.diagnosticReportMs) then
+        return false
+    end
+
+    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then
+        return false
+    end
+
+    if type(diagnosticData) ~= 'table' then
+        return false
+    end
+
+    local vehicle = Validation.GetVehicleByPlate(plate)
+    if not vehicle or not Validation.IsPlayerNearEntity(src, vehicle, 8.0) then
+        return false
+    end
     
     -- Save diagnostic report to database
     local timestamp = os.date('%Y-%m-%d %H:%M:%S')
@@ -309,9 +330,41 @@ lib.callback.register('mechanic:server:repairComponent', function(source, plate,
     if not Player or Player.PlayerData.job.name ~= Config.JobName then
         return false
     end
-    
+
+    if not Validation.CheckRateLimit(src, 'repair_component', Config.Security.rateLimits.repairComponentMs) then
+        return false
+    end
+
+    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then
+        return false
+    end
+
+    local allowedComponents = {
+        tires = true,
+        battery = true,
+        gearbox = true,
+        oil = true,
+        coolant = true,
+        brake_fluid = true,
+        power_steering = true
+    }
+
+    if not allowedComponents[component] then
+        return false
+    end
+
     local componentCost = tonumber(cost)
     if not componentCost or componentCost <= 0 or componentCost > Config.Maintenance.maxComponentCost then
+        return false
+    end
+
+    local vehicle = Validation.GetVehicleByPlate(plate)
+    if not vehicle or not Validation.IsPlayerNearEntity(src, vehicle, 8.0) then
+        return false
+    end
+
+    local isOwned = Validation.IsVehicleOwned(plate)
+    if not isOwned then
         return false
     end
 

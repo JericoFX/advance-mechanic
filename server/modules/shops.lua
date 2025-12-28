@@ -573,12 +573,7 @@ lib.callback.register('mechanic:server:restockItem', function(source, shopId, it
     end
 
     local numericQuantity = tonumber(quantity)
-    local numericCost = tonumber(totalCost)
     if not Validation.IsNumberInRange(numericQuantity, 1, 100) then
-        return false
-    end
-
-    if not Validation.IsNumberInRange(numericCost, 1, 1000000) then
         return false
     end
 
@@ -590,12 +585,22 @@ lib.callback.register('mechanic:server:restockItem', function(source, shopId, it
         return false
     end
 
-    local funds = Business.getBusinessFunds(shopId)
-    if funds < numericCost then
+    local unitPrice = tonumber(stock[itemName].price)
+    if not Validation.IsNumberInRange(unitPrice, 1, 1000000) then
         return false
     end
 
-    if not Business.updateBusinessFunds(shopId, numericCost, true) then
+    local calculatedTotal = unitPrice * numericQuantity
+    if not Validation.IsNumberInRange(calculatedTotal, 1, 100000000) then
+        return false
+    end
+
+    local funds = Business.getBusinessFunds(shopId)
+    if funds < calculatedTotal then
+        return false
+    end
+
+    if not Business.updateBusinessFunds(shopId, calculatedTotal, true) then
         return false
     end
 
