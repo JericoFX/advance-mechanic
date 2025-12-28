@@ -357,7 +357,7 @@ RegisterNetEvent('mechanic:server:repairVehiclePart', function(plate, part, amou
     if not Validation.IsNumberInRange(numericAmount, 1, 100) then return end
 
     local vehicle = Vehicles.GetVehicleByPlate(plate)
-    if vehicle and not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then return end
+    if not vehicle or not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then return end
 
     if Vehicles.RepairPart(source, plate, part, numericAmount) then
         TriggerClientEvent('ox_lib:notify', source, {

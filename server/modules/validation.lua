@@ -137,6 +137,11 @@ function Validation.CheckRateLimit(source, key, intervalMs)
     return true
 end
 
+function Validation.ClearRateLimit(source)
+    if not source then return end
+    rateLimits[source] = nil
+end
+
 function Validation.IsNumberInRange(value, minValue, maxValue)
     if type(value) ~= 'number' then return false end
     if minValue and value < minValue then return false end
@@ -178,6 +183,15 @@ function Validation.IsPlayerNearEntity(source, entity, maxDistance)
     local playerCoords = GetEntityCoords(ped)
     local entityCoords = GetEntityCoords(entity)
     return #(playerCoords - entityCoords) <= (maxDistance or 10.0)
+end
+
+function Validation.IsPlayerNearCoords(source, coords, maxDistance)
+    local normalized = Validation.NormalizeCoords(coords)
+    if not normalized then return false end
+    local ped = GetPlayerPed(source)
+    if not ped or not DoesEntityExist(ped) then return false end
+    local playerCoords = GetEntityCoords(ped)
+    return #(playerCoords - normalized) <= (maxDistance or 10.0)
 end
 
 function Validation.IsVehicleOwned(plate)

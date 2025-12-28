@@ -9,6 +9,8 @@
   "mission_started": "Mission started!",
   "mission_complete": "Mission Complete!",
   "mission_failed": "Mission Failed!",
+  "mission_press_complete": "Press ~INPUT_CONTEXT~ to complete the mission",
+  "mission_repair_required": "Repair the vehicle before completing the mission",
   "repair_successful": "Repair Successful!",
   "purchase_part": "Purchase Part",
   "confirm_purchase": "Confirm Purchase",
