@@ -92,14 +92,21 @@ Config.Security = {
         vehicleDamageMs = 1500,
         fluidSyncMs = 1000,
         fluidUpdateMs = 1500,
+        vehicleInspectionMs = 2000,
+        vehicleFluidMs = 2000,
+        vehicleColorMs = 1500,
         shopStockMs = 2000,
         spawnVehicleMs = 2000,
+        createShopMs = 5000,
         missionRequestMs = 2000,
         missionCompleteMs = 2000,
         billingMs = 2000,
         diagnosticReportMs = 2000,
         repairComponentMs = 2000
-    }
+    },
+    diagnosticMaxDepth = 2,
+    diagnosticMaxKeys = 64,
+    diagnosticMaxString = 256
 }
 
 -- Shop creation settings

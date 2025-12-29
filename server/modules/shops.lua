@@ -5,6 +5,30 @@ local Framework = require 'shared.framework'
 local Validation = require 'server.modules.validation'
 local shopCache = {}
 
+local function buildPublicShopData(shop)
+    local publicShop = {}
+    for key, value in pairs(shop) do
+        if key ~= 'storage' and key ~= 'employees' then
+            publicShop[key] = value
+        end
+    end
+    return publicShop
+end
+
+local function getPublicShops()
+    local public = {}
+    for _, shop in ipairs(shopCache) do
+        table.insert(public, buildPublicShopData(shop))
+    end
+    return public
+end
+
+local function hasEmployeeRecord(citizenid)
+    if not citizenid then return false end
+    local result = MySQL.query.await('SELECT id FROM mechanic_employees WHERE citizenid = ? LIMIT 1', {citizenid})
+    return result and result[1] ~= nil
+end
+
 local function canManageShop(source, shopId, permission)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
@@ -137,7 +161,7 @@ end
 function Shops.LoadAll()
     shopCache = Database.GetAllShops()
     -- Sync to all clients
-    TriggerClientEvent('mechanic:client:shopsUpdated', -1, shopCache)
+    TriggerClientEvent('mechanic:client:shopsUpdated', -1, getPublicShops())
 end
 
 -- Get all shops
@@ -428,6 +452,8 @@ end
 function Shops.ClockIn(source)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
+    if not Validation.IsMechanic(Player) then return false end
+    if not hasEmployeeRecord(Player.PlayerData.citizenid) then return false end
     
     local query = 'UPDATE mechanic_employees SET on_duty = 1, last_clock_in = NOW() WHERE citizenid = ?'
     return MySQL.update.await(query, {Player.PlayerData.citizenid}) > 0
@@ -436,6 +462,8 @@ end
 function Shops.ClockOut(source)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
+    if not Validation.IsMechanic(Player) then return false end
+    if not hasEmployeeRecord(Player.PlayerData.citizenid) then return false end
     
     local query = 'UPDATE mechanic_employees SET on_duty = 0 WHERE citizenid = ?'
     return MySQL.update.await(query, {Player.PlayerData.citizenid}) > 0
@@ -443,7 +471,7 @@ end
 
 -- Callbacks
 lib.callback.register('mechanic:server:getShops', function(source)
-    return Shops.GetAll()
+    return getPublicShops()
 end)
 
 lib.callback.register('mechanic:server:purchaseShop', function(source, shopId)
@@ -612,6 +640,9 @@ end)
 
 -- Events
 RegisterNetEvent('mechanic:server:createShop', function(data)
+    if not Validation.CheckRateLimit(source, 'create_shop', Config.Security.rateLimits.createShopMs) then
+        return
+    end
     Shops.Create(data, source)
 end)
 
