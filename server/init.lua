@@ -9,6 +9,57 @@ local Missions = require 'server.modules.missions'
 local Billing = require 'server.modules.billing'
 local Tuning = require 'server.modules.tuning'
 
+local function sanitizeDiagnosticData(data)
+    if type(data) ~= 'table' then return nil end
+
+    local maxDepth = Config.Security.diagnosticMaxDepth or 2
+    local maxKeys = Config.Security.diagnosticMaxKeys or 64
+    local maxString = Config.Security.diagnosticMaxString or 256
+
+    local function sanitize(value, depth)
+        if depth > maxDepth then
+            return nil
+        end
+
+        local valueType = type(value)
+        if valueType == 'number' or valueType == 'boolean' then
+            return value
+        end
+
+        if valueType == 'string' then
+            if #value > maxString then
+                return value:sub(1, maxString)
+            end
+            return value
+        end
+
+        if valueType ~= 'table' then
+            return nil
+        end
+
+        local sanitized = {}
+        local count = 0
+        for k, v in pairs(value) do
+            count = count + 1
+            if count > maxKeys then
+                return nil
+            end
+            local nested = sanitize(v, depth + 1)
+            if nested ~= nil then
+                sanitized[k] = nested
+            end
+        end
+
+        if next(sanitized) == nil then
+            return nil
+        end
+
+        return sanitized
+    end
+
+    return sanitize(data, 1)
+end
+
 AddEventHandler('playerDropped', function()
     Validation.ClearRateLimit(source)
 end)
@@ -308,10 +359,15 @@ lib.callback.register('mechanic:server:generateDiagnosticReport', function(sourc
     
     -- Save diagnostic report to database
     local timestamp = os.date('%Y-%m-%d %H:%M:%S')
+    local sanitized = sanitizeDiagnosticData(diagnosticData)
+    if not sanitized then
+        return false
+    end
+
     local report = {
         date = timestamp,
         mechanic = Player.PlayerData.charinfo.firstname .. ' ' .. Player.PlayerData.charinfo.lastname,
-        data = diagnosticData
+        data = sanitized
     }
     
     MySQL.update('UPDATE player_vehicles SET last_diagnostic = ? WHERE plate = ?', {

@@ -281,6 +281,25 @@ lib.callback.register('mechanic:server:isVehicleOwned', function(source, plate)
 end)
 
 lib.callback.register('mechanic:server:getVehicleInspection', function(source, plate)
+    local Player = Framework.GetPlayer(source)
+    if not Player or type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return nil end
+
+    if not Validation.CheckRateLimit(source, 'vehicle_inspection', Config.Security.rateLimits.vehicleInspectionMs) then
+        return nil
+    end
+
+    local vehicle = Vehicles.GetVehicleByPlate(plate)
+    if vehicle then
+        if not canAccessVehicle(source, vehicle, plate, false) then
+            return nil
+        end
+    else
+        local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+        if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+            return nil
+        end
+    end
+
     return Vehicles.GetInspectionData(plate)
 end)
 
@@ -289,6 +308,25 @@ lib.callback.register('mechanic:server:purchasePart', function(source, partId, q
 end)
 
 lib.callback.register('mechanic:server:getVehicleFluidData', function(source, plate)
+    local Player = Framework.GetPlayer(source)
+    if not Player or type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return nil end
+
+    if not Validation.CheckRateLimit(source, 'vehicle_fluid', Config.Security.rateLimits.vehicleFluidMs) then
+        return nil
+    end
+
+    local vehicle = Vehicles.GetVehicleByPlate(plate)
+    if vehicle then
+        if not canAccessVehicle(source, vehicle, plate, false) then
+            return nil
+        end
+    else
+        local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+        if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+            return nil
+        end
+    end
+
     return Vehicles.GetFluidData(plate)
 end)
 
@@ -315,7 +353,22 @@ end)
 
 -- Events
 RegisterNetEvent('mechanic:server:updateVehicleColor', function(plate, colorType, color)
-    Vehicles.UpdateColor(source, plate, colorType, color)
+    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return end
+    if colorType ~= 'primary' and colorType ~= 'secondary' then return end
+
+    local numericColor = tonumber(color)
+    if not Validation.IsNumberInRange(numericColor, 0, 160) then return end
+
+    if not Validation.CheckRateLimit(source, 'vehicle_color', Config.Security.rateLimits.vehicleColorMs) then
+        return
+    end
+
+    local vehicle = Vehicles.GetVehicleByPlate(plate)
+    if vehicle and not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then
+        return
+    end
+
+    Vehicles.UpdateColor(source, plate, colorType, numericColor)
 end)
 
 RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, impactData)
