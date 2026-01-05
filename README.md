@@ -59,9 +59,10 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 
 1. Download and extract the resource to your resources folder
 2. Add `ensure advance-mechanic` to your server.cfg
-3. Import `install.sql` to your database
-4. Configure the resource in `config.lua`
-5. Restart your server
+3. Import the SQL file to your database
+4. Import `fluid_data_migration.sql` to add fluid data columns
+5. Configure the resource in `config.lua`
+6. Restart your server
 
 ## Recent Updates
 
@@ -75,7 +76,36 @@ A comprehensive mechanic job system for FiveM with ox_lib integration.
 
 ## Database Setup
 
-Import `install.sql` to create all required tables and columns.
+Execute the following SQL in your database:
+
+```sql
+CREATE TABLE IF NOT EXISTS `mechanic_shops` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `owner` varchar(50) DEFAULT NULL,
+  `price` int(11) NOT NULL DEFAULT 0,
+  `zones` longtext DEFAULT NULL,
+  `employees` longtext DEFAULT '[]',
+  `storage` longtext DEFAULT '{}',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `mechanic_lifts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `shop_id` int(11) NOT NULL,
+  `position` longtext NOT NULL,
+  `height` float NOT NULL DEFAULT 0,
+  `vehicle` varchar(50) DEFAULT NULL,
+  `in_use` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `shop_id` (`shop_id`),
+  CONSTRAINT `mechanic_lifts_ibfk_1` FOREIGN KEY (`shop_id`) REFERENCES `mechanic_shops` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Run fluid_data_migration.sql to add fluid support:
+ALTER TABLE player_vehicles ADD COLUMN IF NOT EXISTS fluid_data LONGTEXT DEFAULT NULL;
+```
 
 ## Commands
 

@@ -85,19 +85,17 @@ CreateThread(function()
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
-    
-    -- Create mechanic_employees table if not exists
+
+    -- Ensure shop columns exist for legacy installs
     MySQL.query([[
-        CREATE TABLE IF NOT EXISTS `mechanic_employees` (
-            `id` int(11) NOT NULL AUTO_INCREMENT,
-            `shop_id` int(11) NOT NULL,
-            `citizenid` varchar(50) NOT NULL,
-            `grade` int(11) NOT NULL DEFAULT 0,
-            `hired_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`),
-            KEY `shop_id` (`shop_id`),
-            KEY `citizenid` (`citizenid`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ALTER TABLE `mechanic_shops`
+        ADD COLUMN IF NOT EXISTS `employees` longtext DEFAULT '[]',
+        ADD COLUMN IF NOT EXISTS `storage` longtext DEFAULT '{}',
+        ADD COLUMN IF NOT EXISTS `payrollEnabled` tinyint(1) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS `payment_frequency` varchar(20) DEFAULT 'weekly',
+        ADD COLUMN IF NOT EXISTS `payment_day` varchar(20) DEFAULT 'friday',
+        ADD COLUMN IF NOT EXISTS `lifts` longtext DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS `vehicleSpawns` longtext DEFAULT NULL;
     ]])
     
     -- Add inspection_data and props columns to player_vehicles if not exists
@@ -207,36 +205,7 @@ RegisterNetEvent('mechanic:server:deleteVehicle', function(netId)
     DeleteEntity(vehicle)
 end)
 
--- Add mechanic job if not exists
-CreateThread(function()
-    Wait(1000)
-    
-    -- Check if job exists
-    if Framework.IsQBCore then
-        local result = MySQL.query.await('SELECT * FROM jobs WHERE name = ?', {Config.JobName})
-        
-        if not result or #result == 0 then
-            -- Create mechanic job
-            MySQL.insert([[
-                INSERT INTO jobs (name, label, grades) VALUES (?, ?, ?)
-            ]], {
-                Config.JobName,
-                'Mechanic',
-                json.encode({
-                    ['0'] = {name = 'Recruit', payment = 50},
-                    ['1'] = {name = 'Novice', payment = 75},
-                    ['2'] = {name = 'Experienced', payment = 100},
-                    ['3'] = {name = 'Expert', payment = 125},
-                    ['4'] = {name = 'Boss', payment = 150, isboss = true}
-                })
-            })
-            
-            print('[Advanced Mechanic] Mechanic job created')
-        end
-    else
-        -- TODO: add ESX job creation if required.
-    end
-end)
+-- QBCore job definitions are expected to be managed by qb-core/shared/jobs.lua
 
 -- Export functions
 exports('getMechanicShops', function()

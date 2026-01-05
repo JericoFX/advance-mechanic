@@ -1,5 +1,5 @@
 local Framework = require 'shared.framework'
-
+lib.load()
 local function getPlayerJob()
     local playerData = Framework.GetPlayerData()
     return playerData and playerData.job
@@ -88,7 +88,7 @@ end)
 -- Resource start
 AddEventHandler('onResourceStart', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
-    
+
     if LocalPlayer.state.isLoggedIn or Framework.IsESX then
         playerLoaded = true
         Shops.LoadShops()
@@ -103,7 +103,7 @@ RegisterNetEvent('mechanic:client:shopsUpdated', function(shops)
     Lifts.CreateZones(shops)
     Parts.CreateZones(shops)
     Inspection.SetActiveShops(shops)
-    
+
     -- Create garage zones
     for _, shop in ipairs(shops) do
         Garage.CreateZone(shop)
@@ -250,7 +250,7 @@ exports.ox_target:addGlobalVehicle({
         end,
         onSelect = function(data)
             local maintenanceOptions = {}
-            
+
             for itemType, itemData in pairs(Config.MaintenanceItems) do
                 local hasItem = exports.ox_inventory:Search('count', itemData.item)
                 table.insert(maintenanceOptions, {
@@ -258,20 +258,20 @@ exports.ox_target:addGlobalVehicle({
                     icon = 'fas fa-wrench',
                     disabled = hasItem < 1,
                     metadata = {
-                        {label = locale('in_inventory'), value = hasItem}
+                        { label = locale('in_inventory'), value = hasItem }
                     },
                     onSelect = function()
                         Maintenance.Perform(data.entity, itemType)
                     end
                 })
             end
-            
+
             lib.registerContext({
                 id = 'maintenance_menu',
                 title = locale('vehicle_maintenance'),
                 options = maintenanceOptions
             })
-            
+
             lib.showContext('maintenance_menu')
         end
     }

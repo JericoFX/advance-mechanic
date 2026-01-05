@@ -23,12 +23,6 @@ local function getPublicShops()
     return public
 end
 
-local function hasEmployeeRecord(citizenid)
-    if not citizenid then return false end
-    local result = MySQL.query.await('SELECT id FROM mechanic_employees WHERE citizenid = ? LIMIT 1', {citizenid})
-    return result and result[1] ~= nil
-end
-
 local function canManageShop(source, shopId, permission)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
@@ -39,6 +33,23 @@ local function canManageShop(source, shopId, permission)
 
     if shop.owner and shop.owner == citizenid then
         return true
+    end
+
+    local job = Player.PlayerData.job or {}
+    local grade = job.grade
+    if type(grade) == 'table' then
+        grade = grade.level
+    end
+    grade = tonumber(grade) or 0
+
+    if job.name == Config.JobName then
+        if grade >= Config.BossGrade then
+            return true
+        end
+        local permissions = Config.Employees.permissions[grade]
+        if permissions and permission and permissions[permission] then
+            return true
+        end
     end
 
     if Business.isBusinessBoss(citizenid, shopId) then
@@ -453,20 +464,20 @@ function Shops.ClockIn(source)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
     if not Validation.IsMechanic(Player) then return false end
-    if not hasEmployeeRecord(Player.PlayerData.citizenid) then return false end
-    
-    local query = 'UPDATE mechanic_employees SET on_duty = 1, last_clock_in = NOW() WHERE citizenid = ?'
-    return MySQL.update.await(query, {Player.PlayerData.citizenid}) > 0
+    if Player.Functions and Player.Functions.SetDuty then
+        Player.Functions.SetDuty(true)
+    end
+    return true
 end
 
 function Shops.ClockOut(source)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
     if not Validation.IsMechanic(Player) then return false end
-    if not hasEmployeeRecord(Player.PlayerData.citizenid) then return false end
-    
-    local query = 'UPDATE mechanic_employees SET on_duty = 0 WHERE citizenid = ?'
-    return MySQL.update.await(query, {Player.PlayerData.citizenid}) > 0
+    if Player.Functions and Player.Functions.SetDuty then
+        Player.Functions.SetDuty(false)
+    end
+    return true
 end
 
 -- Callbacks
