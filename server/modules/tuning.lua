@@ -137,8 +137,8 @@ RegisterNetEvent('mechanic:server:saveVehicleProps', function(netId, props)
     if not Validation.IsPlayerNearEntity(src, vehicle, 10.0) then return end
     
     local plate = GetVehicleNumberPlateText(vehicle)
-    local isOwned = Validation.IsVehicleOwned(plate)
-    if not isOwned then return end
+    local isOwned = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+    if not isOwned and not Validation.IsAdmin(src) then return end
 
     local sanitizedProps = Validation.SanitizeProps(props)
     if not sanitizedProps then return end

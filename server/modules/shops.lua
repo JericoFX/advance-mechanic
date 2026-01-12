@@ -402,8 +402,13 @@ function Shops.SpawnServiceVehicle(source, model, coords)
     local vehicle = CreateVehicle(joaat(model), coords.x, coords.y, coords.z, coords.w or 0.0, true, true)
     
     -- Wait for vehicle to exist
-    while not DoesEntityExist(vehicle) do
+    local timeoutAt = os.clock() + 5
+    while not DoesEntityExist(vehicle) and os.clock() < timeoutAt do
         Wait(10)
+    end
+
+    if not DoesEntityExist(vehicle) then
+        return false
     end
     
   

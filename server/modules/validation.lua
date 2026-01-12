@@ -4,8 +4,6 @@ local Framework = require 'shared.framework'
 -- TODO(PR-MERGE-ID): update with the actual PR identifier before merge to avoid conflicts.
 local rateLimits = {}
 local allowedProps = {
-    plate = true,
-    plateIndex = true,
     bodyHealth = true,
     engineHealth = true,
     fuelLevel = true,
