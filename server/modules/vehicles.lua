@@ -277,6 +277,19 @@ end
 
 -- Callbacks
 lib.callback.register('mechanic:server:isVehicleOwned', function(source, plate)
+    local Player = Framework.GetPlayer(source)
+    if not Player then return false end
+    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return false end
+
+    if not Validation.CheckRateLimit(source, 'vehicle_owned', Config.Security.rateLimits.vehicleInspectionMs) then
+        return false
+    end
+
+    local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+    if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+        return false
+    end
+
     return Vehicles.IsOwned(plate)
 end)
 
@@ -364,7 +377,8 @@ RegisterNetEvent('mechanic:server:updateVehicleColor', function(plate, colorType
     end
 
     local vehicle = Vehicles.GetVehicleByPlate(plate)
-    if vehicle and not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then
+    if not vehicle then return end
+    if not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then
         return
     end
 
