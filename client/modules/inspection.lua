@@ -63,7 +63,8 @@ function Inspection.Inspect(vehicle)
     local isInShop = Inspection.IsInMechanicShop()
     
     if not isInShop then
-        if not exports.ox_inventory:Search('count', 'toolbox') then
+        local toolboxCount = tonumber(exports.ox_inventory:Search('count', 'toolbox')) or 0
+        if toolboxCount < 1 then
             lib.notify({
                 title = locale('toolbox_required_outside'),
                 description = locale('need_toolbox_outside_shop'),

@@ -252,7 +252,7 @@ exports.ox_target:addGlobalVehicle({
             local maintenanceOptions = {}
 
             for itemType, itemData in pairs(Config.MaintenanceItems) do
-                local hasItem = exports.ox_inventory:Search('count', itemData.item)
+                local hasItem = tonumber(exports.ox_inventory:Search('count', itemData.item)) or 0
                 table.insert(maintenanceOptions, {
                     title = itemData.label,
                     icon = 'fas fa-wrench',

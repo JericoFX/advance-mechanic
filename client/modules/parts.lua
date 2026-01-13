@@ -118,7 +118,7 @@ function Parts.InstallPart(vehicle, partType)
     if not partData then return end
     
     -- Check if player has the part
-    local hasItem = exports.ox_inventory:Search('count', partData.item)
+    local hasItem = tonumber(exports.ox_inventory:Search('count', partData.item)) or 0
     if hasItem < 1 then
         lib.notify({
             title = locale('missing_part'),
@@ -195,7 +195,7 @@ function Parts.OpenInstallMenu(vehicle)
     local options = {}
     
     for partId, partData in pairs(Config.VehicleParts) do
-        local hasItem = exports.ox_inventory:Search('count', partData.item)
+        local hasItem = tonumber(exports.ox_inventory:Search('count', partData.item)) or 0
         
         table.insert(options, {
             title = partData.label,

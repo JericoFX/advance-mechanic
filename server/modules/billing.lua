@@ -17,20 +17,29 @@ lib.callback.register('mechanic:server:sendInvoice', function(source, invoice)
     local Player = Framework.GetPlayer(src)
     local normalized = Validation.NormalizeInvoice(invoice)
     
-    if not Player or not normalized then return false end
+    if not Player or not normalized then
+        Validation.LogDenied(src, 'billing_invoice', 'invalid_payload')
+        return false
+    end
     
     if not Validation.IsMechanic(Player) then
+        Validation.LogDenied(src, 'billing_invoice', 'not_mechanic')
         return false
     end
 
     local Target = Framework.GetPlayer(normalized.targetPlayer)
-    if not Target then return false end
+    if not Target or normalized.targetPlayer == src then
+        Validation.LogDenied(src, 'billing_invoice', 'invalid_target')
+        return false
+    end
 
     if not Validation.CheckRateLimit(src, 'billing_invoice', Config.Security.rateLimits.billingMs) then
+        Validation.LogDenied(src, 'billing_invoice', 'rate_limited')
         return false
     end
 
     if not isPlayerNearTarget(src, normalized.targetPlayer, Config.Billing.maxDistance) then
+        Validation.LogDenied(src, 'billing_invoice', 'not_near_target')
         return false
     end
     
@@ -76,22 +85,34 @@ lib.callback.register('mechanic:server:sendQuickBill', function(source, targetId
     local Player = Framework.GetPlayer(src)
     local Target = Framework.GetPlayer(targetId)
     
-    if not Player or not Target then return false end
+    if not Player or not Target or targetId == src then
+        Validation.LogDenied(src, 'billing_quick', 'invalid_target')
+        return false
+    end
     
     if not Validation.IsMechanic(Player) then
+        Validation.LogDenied(src, 'billing_quick', 'not_mechanic')
         return false
     end
 
     if not Validation.CheckRateLimit(src, 'billing_quick', Config.Security.rateLimits.billingMs) then
+        Validation.LogDenied(src, 'billing_quick', 'rate_limited')
         return false
     end
 
     if not isPlayerNearTarget(src, targetId, Config.Billing.maxDistance) then
+        Validation.LogDenied(src, 'billing_quick', 'not_near_target')
         return false
     end
 
     local billAmount = tonumber(amount)
     if not Validation.IsNumberInRange(billAmount, Config.Billing.quickBill.minAmount, Config.Billing.quickBill.maxAmount) then
+        Validation.LogDenied(src, 'billing_quick', 'invalid_amount')
+        return false
+    end
+
+    if type(reason) ~= 'string' or #reason < 1 or #reason > 256 then
+        Validation.LogDenied(src, 'billing_quick', 'invalid_reason')
         return false
     end
     

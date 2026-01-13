@@ -279,14 +279,16 @@ end
 lib.callback.register('mechanic:server:isVehicleOwned', function(source, plate)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
-    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return false end
+    if not Validation.IsValidPlate(plate) then return false end
 
     if not Validation.CheckRateLimit(source, 'vehicle_owned', Config.Security.rateLimits.vehicleInspectionMs) then
+        Validation.LogDenied(source, 'vehicle_owned', 'rate_limited')
         return false
     end
 
     local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
     if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+        Validation.LogDenied(source, 'vehicle_owned', 'not_authorized')
         return false
     end
 
@@ -295,20 +297,23 @@ end)
 
 lib.callback.register('mechanic:server:getVehicleInspection', function(source, plate)
     local Player = Framework.GetPlayer(source)
-    if not Player or type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return nil end
+    if not Player or not Validation.IsValidPlate(plate) then return nil end
 
     if not Validation.CheckRateLimit(source, 'vehicle_inspection', Config.Security.rateLimits.vehicleInspectionMs) then
+        Validation.LogDenied(source, 'vehicle_inspection', 'rate_limited')
         return nil
     end
 
     local vehicle = Vehicles.GetVehicleByPlate(plate)
     if vehicle then
         if not canAccessVehicle(source, vehicle, plate, false) then
+            Validation.LogDenied(source, 'vehicle_inspection', 'not_authorized')
             return nil
         end
     else
         local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
         if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+            Validation.LogDenied(source, 'vehicle_inspection', 'not_authorized')
             return nil
         end
     end
@@ -317,25 +322,38 @@ lib.callback.register('mechanic:server:getVehicleInspection', function(source, p
 end)
 
 lib.callback.register('mechanic:server:purchasePart', function(source, partId, quantity, totalPrice)
-    return Vehicles.PurchasePart(source, partId, quantity, totalPrice)
+    local numericPartId = tonumber(partId)
+    if not Validation.IsPositiveInteger(numericPartId, 1) then
+        Validation.LogDenied(source, 'purchase_part', 'invalid_part_id')
+        return false
+    end
+    local numericQuantity = tonumber(quantity)
+    if not Validation.IsNumberInRange(numericQuantity, 1, Config.Billing.parts.maxQuantity) then
+        Validation.LogDenied(source, 'purchase_part', 'invalid_quantity')
+        return false
+    end
+    return Vehicles.PurchasePart(source, numericPartId, numericQuantity, totalPrice)
 end)
 
 lib.callback.register('mechanic:server:getVehicleFluidData', function(source, plate)
     local Player = Framework.GetPlayer(source)
-    if not Player or type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return nil end
+    if not Player or not Validation.IsValidPlate(plate) then return nil end
 
     if not Validation.CheckRateLimit(source, 'vehicle_fluid', Config.Security.rateLimits.vehicleFluidMs) then
+        Validation.LogDenied(source, 'vehicle_fluid', 'rate_limited')
         return nil
     end
 
     local vehicle = Vehicles.GetVehicleByPlate(plate)
     if vehicle then
         if not canAccessVehicle(source, vehicle, plate, false) then
+            Validation.LogDenied(source, 'vehicle_fluid', 'not_authorized')
             return nil
         end
     else
         local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
         if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+            Validation.LogDenied(source, 'vehicle_fluid', 'not_authorized')
             return nil
         end
     end
@@ -345,36 +363,48 @@ end)
 
 lib.callback.register('mechanic:server:updateVehicleFluidData', function(source, plate, fluidData)
     local Player = Framework.GetPlayer(source)
-    if not Player or type(plate) ~= 'string' then return false end
+    if not Player or not Validation.IsValidPlate(plate) then return false end
 
     local vehicle = Vehicles.GetVehicleByPlate(plate)
-    if not vehicle then return false end
+    if not vehicle then
+        Validation.LogDenied(source, 'vehicle_fluid_update', 'vehicle_not_found')
+        return false
+    end
 
     if not Validation.CheckRateLimit(source, 'fluid_update', Config.Security.rateLimits.fluidUpdateMs) then
+        Validation.LogDenied(source, 'vehicle_fluid_update', 'rate_limited')
         return false
     end
 
     if not canAccessVehicle(source, vehicle, plate, false) then
+        Validation.LogDenied(source, 'vehicle_fluid_update', 'not_authorized')
         return false
     end
 
     local normalized = Validation.NormalizeFluidData(fluidData)
-    if not normalized then return false end
+    if not normalized then
+        Validation.LogDenied(source, 'vehicle_fluid_update', 'invalid_fluid_data')
+        return false
+    end
 
     return Vehicles.UpdateFluidData(plate, normalized)
 end)
 
 -- Events
 RegisterNetEvent('mechanic:server:updateVehicleColor', function(plate, colorType, color)
-    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then return end
+    if not Validation.IsValidPlate(plate) then return end
     if colorType ~= 'primary' and colorType ~= 'secondary' then return end
 
     local numericColor = tonumber(color)
     if not Validation.IsNumberInRange(numericColor, 0, 160) then return end
 
     if not Validation.CheckRateLimit(source, 'vehicle_color', Config.Security.rateLimits.vehicleColorMs) then
+        Validation.LogDenied(source, 'vehicle_color', 'rate_limited')
         return
     end
+
+    local Player = Framework.GetPlayer(source)
+    if not Player then return end
 
     local vehicle = Vehicles.GetVehicleByPlate(plate)
     if not vehicle then return end
@@ -382,13 +412,20 @@ RegisterNetEvent('mechanic:server:updateVehicleColor', function(plate, colorType
         return
     end
 
+    local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
+    if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(source) then
+        Validation.LogDenied(source, 'vehicle_color', 'not_authorized')
+        return
+    end
+
     Vehicles.UpdateColor(source, plate, colorType, numericColor)
 end)
 
 RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, impactData)
-    if type(plate) ~= 'string' then return end
+    if not Validation.IsValidPlate(plate) then return end
 
     if not Validation.CheckRateLimit(source, 'vehicle_damage', Config.Security.rateLimits.vehicleDamageMs) then
+        Validation.LogDenied(source, 'vehicle_damage', 'rate_limited')
         return
     end
 
@@ -403,7 +440,10 @@ RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, impactData)
     end
 
     local normalizedImpact = Validation.NormalizeImpactData(impactData)
-    if not normalizedImpact then return end
+    if not normalizedImpact then
+        Validation.LogDenied(source, 'vehicle_damage', 'invalid_impact')
+        return
+    end
 
     -- Add source coords for nearby notification
     normalizedImpact.coords = GetEntityCoords(ped)
@@ -417,11 +457,16 @@ RegisterNetEvent('mechanic:server:vehicleDamaged', function(plate, impactData)
 end)
 
 RegisterNetEvent('mechanic:server:repairVehiclePart', function(plate, part, amount)
-    if type(plate) ~= 'string' then return end
+    if not Validation.IsValidPlate(plate) then return end
     if type(part) ~= 'string' or not Config.Inspection.checkPoints[part] then return end
 
     local numericAmount = tonumber(amount)
     if not Validation.IsNumberInRange(numericAmount, 1, 100) then return end
+
+    if not Validation.CheckRateLimit(source, 'repair_vehicle_part', Config.Security.rateLimits.repairComponentMs) then
+        Validation.LogDenied(source, 'repair_vehicle_part', 'rate_limited')
+        return
+    end
 
     local vehicle = Vehicles.GetVehicleByPlate(plate)
     if not vehicle or not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then return end
@@ -440,6 +485,7 @@ RegisterNetEvent('mechanic:server:syncVehicleProperties', function(netId, props)
     if not Player then return end
 
     if not Validation.CheckRateLimit(source, 'vehicle_props', Config.Security.rateLimits.vehiclePropsMs) then
+        Validation.LogDenied(source, 'vehicle_props', 'rate_limited')
         return
     end
 
@@ -452,7 +498,10 @@ RegisterNetEvent('mechanic:server:syncVehicleProperties', function(netId, props)
     end
 
     local sanitizedProps = Validation.SanitizeProps(props)
-    if not sanitizedProps then return end
+    if not sanitizedProps then
+        Validation.LogDenied(source, 'vehicle_props', 'invalid_props')
+        return
+    end
 
     TriggerClientEvent('mechanic:client:syncVehicleProperties', -1, netId, sanitizedProps)
 end)
@@ -462,7 +511,7 @@ RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
     local src = source
     
     -- Validar datos
-    if not plate or not fluidData then return end
+    if not Validation.IsValidPlate(plate) or type(fluidData) ~= 'table' then return end
     
     -- Validar que el jugador esté cerca del vehículo
     local ped = GetPlayerPed(src)
@@ -473,11 +522,13 @@ RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
         if not Player then return end
 
         if not Validation.CheckRateLimit(src, 'fluid_sync', Config.Security.rateLimits.fluidSyncMs) then
+            Validation.LogDenied(src, 'fluid_sync', 'rate_limited')
             return
         end
 
         local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
         if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(src) then
+            Validation.LogDenied(src, 'fluid_sync', 'not_authorized')
             return
         end
 
@@ -487,7 +538,10 @@ RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
         -- Solo permitir sincronización si está cerca del vehículo
         if #(vehicleCoords - playerCoords) < 10.0 then
             local normalized = Validation.NormalizeFluidData(fluidData)
-            if not normalized then return end
+            if not normalized then
+                Validation.LogDenied(src, 'fluid_sync', 'invalid_fluid_data')
+                return
+            end
             
             -- Actualizar en base de datos
             Vehicles.UpdateFluidData(plate, normalized)
