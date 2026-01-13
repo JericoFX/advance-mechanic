@@ -109,6 +109,10 @@ end
 
 -- Events
 RegisterNetEvent('mechanic:server:completeMission', function(success)
+    if success ~= true and success ~= false then
+        Validation.LogDenied(source, 'mission_complete', 'invalid_payload')
+        return
+    end
     Missions.Complete(source, success)
 end)
 

@@ -23,7 +23,8 @@ if not DoesEntityExist(vehicle) then return end
         return
     end
     
-    if not exports.ox_inventory:Search('count', maintenanceItem.item) then
+    local itemCount = tonumber(exports.ox_inventory:Search('count', maintenanceItem.item)) or 0
+    if itemCount < 1 then
         lib.notify({
             title = string.format(locale('missing_item'), maintenanceItem.label),
             type = 'error'

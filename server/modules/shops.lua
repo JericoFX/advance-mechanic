@@ -491,27 +491,50 @@ lib.callback.register('mechanic:server:getShops', function(source)
 end)
 
 lib.callback.register('mechanic:server:purchaseShop', function(source, shopId)
+    if not Validation.IsPositiveInteger(shopId, 1) then
+        Validation.LogDenied(source, 'shop_purchase', 'invalid_shop_id')
+        return false
+    end
     return Shops.Purchase(source, shopId)
 end)
 
 lib.callback.register('mechanic:server:sellShop', function(source, shopId)
+    if not Validation.IsPositiveInteger(shopId, 1) then
+        Validation.LogDenied(source, 'shop_sell', 'invalid_shop_id')
+        return false
+    end
     return Shops.Sell(source, shopId)
 end)
 
 lib.callback.register('mechanic:server:spawnServiceVehicle', function(source, model, coords)
+    if type(model) ~= 'string' or not Validation.IsValidCoords(coords) then
+        Validation.LogDenied(source, 'shop_spawn_service', 'invalid_payload')
+        return false
+    end
     return Shops.SpawnServiceVehicle(source, model, coords)
 end)
 
 lib.callback.register('mechanic:server:spawnGarageVehicle', function(source, model, coords)
+    if type(model) ~= 'string' or not Validation.IsValidCoords(coords) then
+        Validation.LogDenied(source, 'shop_spawn_garage', 'invalid_payload')
+        return false
+    end
     return Shops.SpawnServiceVehicle(source, model, coords)
 end)
 
 -- Employee management callbacks
 lib.callback.register('mechanic:server:hireEmployee', function(source, shopId, targetId, grade, wage)
+    if not Validation.IsPositiveInteger(shopId, 1) or not Validation.IsPositiveInteger(targetId, 1) then
+        return false, locale('hire_failed')
+    end
+    local numericGrade = tonumber(grade)
+    if not Validation.IsNumberInRange(numericGrade, 0, Config.BossGrade) then
+        return false, locale('hire_failed')
+    end
     if not canManageShop(source, shopId, 'manage_employees') then
         return false, locale('no_permission')
     end
-    local success, message = Shops.AddEmployee(shopId, targetId, grade)
+    local success, message = Shops.AddEmployee(shopId, targetId, numericGrade)
     if success then
         -- El wage se establece en el Business.hireEmployee
         return true, message or locale('employee_hired')
@@ -520,26 +543,43 @@ lib.callback.register('mechanic:server:hireEmployee', function(source, shopId, t
 end)
 
 lib.callback.register('mechanic:server:changeEmployeeGrade', function(source, shopId, targetCitizenId, newGrade)
+    if not Validation.IsPositiveInteger(shopId, 1) or not Validation.IsValidCitizenId(targetCitizenId) then
+        return false, locale('change_failed')
+    end
+    local numericGrade = tonumber(newGrade)
+    if not Validation.IsNumberInRange(numericGrade, 0, Config.BossGrade) then
+        return false, locale('change_failed')
+    end
     if not canManageShop(source, shopId, 'manage_employees') then
         return false, locale('no_permission')
     end
-    if Shops.ChangeEmployeeGrade(shopId, targetCitizenId, newGrade) then
+    if Shops.ChangeEmployeeGrade(shopId, targetCitizenId, numericGrade) then
         return true, locale('grade_changed')
     end
     return false, locale('change_failed')
 end)
 
 lib.callback.register('mechanic:server:changeEmployeeWage', function(source, shopId, targetCitizenId, newWage)
+    if not Validation.IsPositiveInteger(shopId, 1) or not Validation.IsValidCitizenId(targetCitizenId) then
+        return false, locale('change_failed')
+    end
+    local numericWage = tonumber(newWage)
+    if not Validation.IsNumberInRange(numericWage, Config.Employees.minWage, Config.Employees.maxWage) then
+        return false, locale('change_failed')
+    end
     if not canManageShop(source, shopId, 'manage_employees') then
         return false, locale('no_permission')
     end
-    if Shops.ChangeEmployeeWage(shopId, targetCitizenId, newWage) then
+    if Shops.ChangeEmployeeWage(shopId, targetCitizenId, numericWage) then
         return true, locale('wage_changed')
     end
     return false, locale('change_failed')
 end)
 
 lib.callback.register('mechanic:server:fireEmployee', function(source, shopId, targetCitizenId)
+    if not Validation.IsPositiveInteger(shopId, 1) or not Validation.IsValidCitizenId(targetCitizenId) then
+        return false, locale('fire_failed')
+    end
     if not canManageShop(source, shopId, 'manage_employees') then
         return false, locale('no_permission')
     end
@@ -550,6 +590,9 @@ lib.callback.register('mechanic:server:fireEmployee', function(source, shopId, t
 end)
 
 lib.callback.register('mechanic:server:getEmployees', function(source, shopId)
+    if not Validation.IsPositiveInteger(shopId, 1) then
+        return {}
+    end
     if not canManageShop(source, shopId, 'manage_employees') then
         return {}
     end
@@ -557,6 +600,9 @@ lib.callback.register('mechanic:server:getEmployees', function(source, shopId)
 end)
 
 lib.callback.register('mechanic:server:togglePayroll', function(source, shopId)
+    if not Validation.IsPositiveInteger(shopId, 1) then
+        return false, nil
+    end
     if not canManageShop(source, shopId, 'manage_employees') then
         return false, nil
     end
@@ -564,6 +610,9 @@ lib.callback.register('mechanic:server:togglePayroll', function(source, shopId)
 end)
 
 lib.callback.register('mechanic:server:getPayrollSettings', function(source, shopId)
+    if not Validation.IsPositiveInteger(shopId, 1) then
+        return nil
+    end
     if not canManageShop(source, shopId, 'manage_employees') then
         return nil
     end
@@ -586,11 +635,16 @@ end)
 lib.callback.register('mechanic:server:hasEmployeePermission', function(source, shopId, permission)
     local Player = Framework.GetPlayer(source)
     if not Player then return false end
-    
+    if not Validation.IsPositiveInteger(shopId, 1) then return false end
+    if permission ~= nil and (type(permission) ~= 'string' or #permission > 64) then return false end
+
     return canManageShop(source, shopId, permission)
 end)
 
 lib.callback.register('mechanic:server:getShopStock', function(source, shopId)
+    if not Validation.IsPositiveInteger(shopId, 1) then
+        return nil
+    end
     if not canManageShop(source, shopId, 'manage_inventory') then
         return nil
     end
@@ -608,6 +662,12 @@ lib.callback.register('mechanic:server:getShopStock', function(source, shopId)
 end)
 
 lib.callback.register('mechanic:server:restockItem', function(source, shopId, itemName, quantity, totalCost)
+    if not Validation.IsPositiveInteger(shopId, 1) then
+        return false
+    end
+    if type(itemName) ~= 'string' or #itemName < 1 or #itemName > 64 then
+        return false
+    end
     if not canManageShop(source, shopId, 'manage_inventory') then
         return false
     end
@@ -656,7 +716,12 @@ end)
 
 -- Events
 RegisterNetEvent('mechanic:server:createShop', function(data)
+    if type(data) ~= 'table' then
+        Validation.LogDenied(source, 'shop_create', 'invalid_payload')
+        return
+    end
     if not Validation.CheckRateLimit(source, 'create_shop', Config.Security.rateLimits.createShopMs) then
+        Validation.LogDenied(source, 'shop_create', 'rate_limited')
         return
     end
     Shops.Create(data, source)

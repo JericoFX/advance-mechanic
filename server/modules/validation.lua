@@ -85,6 +85,13 @@ local function sanitizeTable(value, depth)
     return sanitized
 end
 
+function Validation.LogDenied(source, action, reason)
+    if not Config.Debug then return end
+    local safeAction = action or 'unknown'
+    local safeReason = reason or 'unspecified'
+    print(('[Advanced Mechanic] Denied %s from %s: %s'):format(safeAction, source or 'unknown', safeReason))
+end
+
 function Validation.ClampNumber(value, minValue, maxValue, fallback)
     if type(value) ~= 'number' then
         return fallback
@@ -96,6 +103,16 @@ function Validation.ClampNumber(value, minValue, maxValue, fallback)
         return maxValue
     end
     return value
+end
+
+function Validation.IsPositiveInteger(value, minValue, maxValue)
+    local numeric = tonumber(value)
+    if not numeric or numeric % 1 ~= 0 then
+        return false
+    end
+    if minValue and numeric < minValue then return false end
+    if maxValue and numeric > maxValue then return false end
+    return true
 end
 
 function Validation.IsValidCoords(coords)
@@ -118,6 +135,14 @@ function Validation.NormalizeCoords(coords)
         return nil
     end
     return vec3(coords.x, coords.y, coords.z)
+end
+
+function Validation.IsValidPlate(plate)
+    return type(plate) == 'string' and #plate >= 1 and #plate <= 12
+end
+
+function Validation.IsValidCitizenId(citizenid)
+    return type(citizenid) == 'string' and #citizenid >= 1 and #citizenid <= 64
 end
 
 function Validation.CheckRateLimit(source, key, intervalMs)

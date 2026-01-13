@@ -232,14 +232,19 @@ end)
 lib.callback.register('mechanic:server:getVehicleData', function(source, plate)
     local Player = Framework.GetPlayer(source)
     if not Player or not Validation.IsMechanic(Player) then return nil end
-    if type(plate) ~= 'string' then return nil end
+    if not Validation.IsValidPlate(plate) then
+        Validation.LogDenied(source, 'vehicle_data', 'invalid_plate')
+        return nil
+    end
 
     if not Validation.CheckRateLimit(source, 'vehicle_data', Config.Security.rateLimits.vehiclePropsMs) then
+        Validation.LogDenied(source, 'vehicle_data', 'rate_limited')
         return nil
     end
 
     local vehicle = Validation.GetVehicleByPlate(plate)
     if vehicle and not Validation.IsPlayerNearEntity(source, vehicle, 10.0) then
+        Validation.LogDenied(source, 'vehicle_data', 'not_near_vehicle')
         return nil
     end
 
@@ -265,17 +270,25 @@ lib.callback.register('mechanic:server:repairVehicle', function(source, netId, c
     if not Player then return false end
     
     if not Validation.IsMechanic(Player) then
+        Validation.LogDenied(src, 'repair_vehicle', 'not_mechanic')
+        return false
+    end
+
+    if not Validation.CheckRateLimit(src, 'repair_vehicle', Config.Security.rateLimits.repairComponentMs) then
+        Validation.LogDenied(src, 'repair_vehicle', 'rate_limited')
         return false
     end
     
     local vehicle = Validation.GetVehicleByNetId(netId)
     if not vehicle or not Validation.IsPlayerNearEntity(src, vehicle, 8.0) then
+        Validation.LogDenied(src, 'repair_vehicle', 'vehicle_invalid_or_far')
         return false
     end
 
     local plate = GetVehicleNumberPlateText(vehicle)
     local isOwned = Validation.IsVehicleOwned(plate)
     if not isOwned then
+        Validation.LogDenied(src, 'repair_vehicle', 'vehicle_unowned')
         return false
     end
 
@@ -285,7 +298,8 @@ lib.callback.register('mechanic:server:repairVehicle', function(source, netId, c
         repairCost = tonumber(cost) or 0
     end
 
-    if repairCost <= 0 then
+    if repairCost <= 0 or repairCost > Config.Maintenance.maxComponentCost then
+        Validation.LogDenied(src, 'repair_vehicle', 'invalid_cost')
         return false
     end
 
@@ -306,23 +320,28 @@ lib.callback.register('mechanic:server:generateDiagnosticReport', function(sourc
     local Player = Framework.GetPlayer(src)
     
     if not Player or not Validation.IsMechanic(Player) then
+        Validation.LogDenied(src, 'diagnostic_report', 'not_mechanic')
         return false
     end
 
     if not Validation.CheckRateLimit(src, 'diagnostic_report', Config.Security.rateLimits.diagnosticReportMs) then
+        Validation.LogDenied(src, 'diagnostic_report', 'rate_limited')
         return false
     end
 
-    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then
+    if not Validation.IsValidPlate(plate) then
+        Validation.LogDenied(src, 'diagnostic_report', 'invalid_plate')
         return false
     end
 
     if type(diagnosticData) ~= 'table' then
+        Validation.LogDenied(src, 'diagnostic_report', 'invalid_payload')
         return false
     end
 
     local vehicle = Validation.GetVehicleByPlate(plate)
     if not vehicle or not Validation.IsPlayerNearEntity(src, vehicle, 8.0) then
+        Validation.LogDenied(src, 'diagnostic_report', 'vehicle_invalid_or_far')
         return false
     end
     
@@ -330,6 +349,7 @@ lib.callback.register('mechanic:server:generateDiagnosticReport', function(sourc
     local timestamp = os.date('%Y-%m-%d %H:%M:%S')
     local sanitized = sanitizeDiagnosticData(diagnosticData)
     if not sanitized then
+        Validation.LogDenied(src, 'diagnostic_report', 'payload_too_large')
         return false
     end
 
@@ -353,14 +373,17 @@ lib.callback.register('mechanic:server:repairComponent', function(source, plate,
     local Player = Framework.GetPlayer(src)
     
     if not Player or Player.PlayerData.job.name ~= Config.JobName then
+        Validation.LogDenied(src, 'repair_component', 'not_mechanic')
         return false
     end
 
     if not Validation.CheckRateLimit(src, 'repair_component', Config.Security.rateLimits.repairComponentMs) then
+        Validation.LogDenied(src, 'repair_component', 'rate_limited')
         return false
     end
 
-    if type(plate) ~= 'string' or #plate < 1 or #plate > 12 then
+    if not Validation.IsValidPlate(plate) then
+        Validation.LogDenied(src, 'repair_component', 'invalid_plate')
         return false
     end
 
@@ -375,21 +398,25 @@ lib.callback.register('mechanic:server:repairComponent', function(source, plate,
     }
 
     if not allowedComponents[component] then
+        Validation.LogDenied(src, 'repair_component', 'invalid_component')
         return false
     end
 
     local componentCost = tonumber(cost)
     if not componentCost or componentCost <= 0 or componentCost > Config.Maintenance.maxComponentCost then
+        Validation.LogDenied(src, 'repair_component', 'invalid_cost')
         return false
     end
 
     local vehicle = Validation.GetVehicleByPlate(plate)
     if not vehicle or not Validation.IsPlayerNearEntity(src, vehicle, 8.0) then
+        Validation.LogDenied(src, 'repair_component', 'vehicle_invalid_or_far')
         return false
     end
 
     local isOwned = Validation.IsVehicleOwned(plate)
     if not isOwned then
+        Validation.LogDenied(src, 'repair_component', 'vehicle_unowned')
         return false
     end
 
