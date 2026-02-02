@@ -30,3 +30,4 @@ config.local.lua
 # Database dumps
 *.sql.gz
 *.sql.zip
+nul
