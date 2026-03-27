@@ -21,12 +21,27 @@ const GTA_COLORS = [
     '#0e1f44', '#102555', '#13316e', '#1a4088', '#1e53a2', '#2468b8', '#2e7fd4', '#4a9ee0'
 ];
 
-let state = {
+let currentMode = 'paint';
+
+let paintState = {
     paintType: 'standard',
     colorIndex: -1,
     pearlIndex: -1,
     basePrice: 0,
     multipliers: {}
+};
+
+let wrapState = {
+    zone: 'primary',
+    material: 'gloss',
+    primaryColor: -1,
+    secondaryColor: -1,
+    liveryIndex: -1,
+    catalogId: -1,
+    basePrice: 0,
+    materials: {},
+    liveries: [],
+    catalog: []
 };
 
 function post(event, data) {
@@ -50,100 +65,282 @@ function buildColorGrid(containerId, onClick) {
     });
 }
 
-function selectColor(index, swatch, containerId) {
+function selectPaintColor(index, swatch, containerId) {
     document.querySelectorAll('#' + containerId + ' .color-swatch').forEach(s => s.classList.remove('selected'));
     swatch.classList.add('selected');
 
     if (containerId === 'color-grid') {
-        state.colorIndex = index;
+        paintState.colorIndex = index;
     } else {
-        state.pearlIndex = index;
+        paintState.pearlIndex = index;
     }
 
-    updatePrice();
+    updatePaintPrice();
 
     post('paintPreview', {
-        type: state.paintType,
-        colorIndex: state.colorIndex,
-        pearlIndex: state.pearlIndex
+        type: paintState.paintType,
+        colorIndex: paintState.colorIndex,
+        pearlIndex: paintState.pearlIndex
     });
 }
 
-function updatePrice() {
-    const mult = state.multipliers[state.paintType] || 1.0;
-    const price = Math.floor(state.basePrice * mult);
+function selectWrapColor(index, swatch, containerId) {
+    document.querySelectorAll('#' + containerId + ' .color-swatch').forEach(s => s.classList.remove('selected'));
+    swatch.classList.add('selected');
+
+    if (wrapState.zone === 'primary') {
+        wrapState.primaryColor = index;
+    } else {
+        wrapState.secondaryColor = index;
+    }
+
+    wrapState.catalogId = -1;
+    document.querySelectorAll('.catalog-item').forEach(c => c.classList.remove('selected'));
+
+    updateWrapPrice();
+
+    post('wrapPreview', {
+        zone: wrapState.zone,
+        colorIndex: index,
+        material: wrapState.material
+    });
+}
+
+function updatePaintPrice() {
+    const mult = paintState.multipliers[paintState.paintType] || 1.0;
+    const price = Math.floor(paintState.basePrice * mult);
+    document.getElementById('price-display').textContent = '$' + price.toLocaleString();
+}
+
+function updateWrapPrice() {
+    const matData = wrapState.materials[wrapState.material];
+    const mult = matData ? matData.priceMultiplier : 1.0;
+    const price = Math.floor(wrapState.basePrice * mult);
     document.getElementById('price-display').textContent = '$' + price.toLocaleString();
 }
 
 function setActiveTab(type) {
-    state.paintType = type;
-    state.colorIndex = -1;
-    state.pearlIndex = -1;
+    paintState.paintType = type;
+    paintState.colorIndex = -1;
+    paintState.pearlIndex = -1;
 
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelector('[data-type="' + type + '"]').classList.add('active');
-
-    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    document.querySelectorAll('#color-grid .color-swatch, #pearl-grid .color-swatch').forEach(s => s.classList.remove('selected'));
 
     const pearlSection = document.getElementById('pearlescent-section');
-    if (type === 'pearlescent') {
-        pearlSection.classList.remove('hidden');
-    } else {
-        pearlSection.classList.add('hidden');
+    pearlSection.classList.toggle('hidden', type !== 'pearlescent');
+    document.getElementById('color-grid').classList.toggle('hidden', type === 'chrome');
+
+    updatePaintPrice();
+}
+
+function setWrapZone(zone) {
+    wrapState.zone = zone;
+    document.querySelectorAll('.wrap-zone-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-zone="' + zone + '"]').classList.add('active');
+    document.querySelectorAll('#wrap-color-grid .color-swatch').forEach(s => s.classList.remove('selected'));
+
+    const currentColor = zone === 'primary' ? wrapState.primaryColor : wrapState.secondaryColor;
+    if (currentColor >= 0) {
+        const swatch = document.querySelector('#wrap-color-grid .color-swatch[data-index="' + currentColor + '"]');
+        if (swatch) swatch.classList.add('selected');
+    }
+}
+
+function setWrapMaterial(material) {
+    wrapState.material = material;
+    document.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-material="' + material + '"]').classList.add('active');
+    updateWrapPrice();
+
+    if (wrapState.primaryColor >= 0 || wrapState.secondaryColor >= 0) {
+        post('wrapPreview', {
+            zone: wrapState.zone,
+            colorIndex: wrapState.zone === 'primary' ? wrapState.primaryColor : wrapState.secondaryColor,
+            material: material
+        });
+    }
+}
+
+function buildLiveryList(liveries) {
+    const container = document.getElementById('livery-list');
+    const section = document.getElementById('livery-section');
+    container.innerHTML = '';
+
+    if (!liveries || liveries.length === 0) {
+        section.classList.add('hidden');
+        return;
     }
 
-    if (type === 'chrome') {
-        document.getElementById('color-grid').classList.add('hidden');
-    } else {
-        document.getElementById('color-grid').classList.remove('hidden');
+    section.classList.remove('hidden');
+    liveries.forEach((livery, i) => {
+        const item = document.createElement('div');
+        item.className = 'livery-item';
+        item.textContent = livery.name || ('Livery ' + (i + 1));
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.livery-item').forEach(l => l.classList.remove('selected'));
+            item.classList.add('selected');
+            wrapState.liveryIndex = livery.index;
+            post('wrapLiveryPreview', { liveryIndex: livery.index });
+        });
+        container.appendChild(item);
+    });
+}
+
+function buildCatalogList(catalog) {
+    const container = document.getElementById('catalog-list');
+    const section = document.getElementById('catalog-section');
+    container.innerHTML = '';
+
+    if (!catalog || catalog.length === 0) {
+        section.classList.add('hidden');
+        return;
     }
 
-    updatePrice();
+    section.classList.remove('hidden');
+    catalog.forEach((wrap) => {
+        const item = document.createElement('div');
+        item.className = 'catalog-item';
+
+        const swatch = document.createElement('div');
+        swatch.className = 'catalog-swatch';
+        swatch.style.backgroundColor = GTA_COLORS[wrap.primary_color] || '#333';
+
+        const name = document.createElement('span');
+        name.className = 'catalog-name';
+        name.textContent = wrap.name;
+
+        const price = document.createElement('span');
+        price.className = 'catalog-price';
+        price.textContent = '$' + wrap.price.toLocaleString();
+
+        item.appendChild(swatch);
+        item.appendChild(name);
+        item.appendChild(price);
+
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.catalog-item').forEach(c => c.classList.remove('selected'));
+            item.classList.add('selected');
+            wrapState.catalogId = wrap.id;
+            document.getElementById('price-display').textContent = '$' + wrap.price.toLocaleString();
+            post('wrapCatalogPreview', { catalogId: wrap.id });
+        });
+
+        container.appendChild(item);
+    });
+}
+
+function openPaintMode(data) {
+    currentMode = 'paint';
+    paintState.basePrice = data.basePrice || 500;
+    paintState.multipliers = data.multipliers || {};
+    document.getElementById('panel-title').textContent = 'Paint Booth';
+    document.getElementById('paint-section').classList.remove('hidden');
+    document.getElementById('wrap-section').classList.add('hidden');
+    document.getElementById('paint-panel').classList.remove('hidden');
+    buildColorGrid('color-grid', selectPaintColor);
+    buildColorGrid('pearl-grid', selectPaintColor);
+    setActiveTab('standard');
+}
+
+function openWrapMode(data) {
+    currentMode = 'wrap';
+    wrapState.basePrice = data.basePrice || 2000;
+    wrapState.materials = data.materials || {};
+    wrapState.primaryColor = -1;
+    wrapState.secondaryColor = -1;
+    wrapState.liveryIndex = -1;
+    wrapState.catalogId = -1;
+    wrapState.zone = 'primary';
+    wrapState.material = 'gloss';
+
+    document.getElementById('panel-title').textContent = 'Vehicle Wrapping';
+    document.getElementById('paint-section').classList.add('hidden');
+    document.getElementById('wrap-section').classList.remove('hidden');
+    document.getElementById('paint-panel').classList.remove('hidden');
+
+    buildColorGrid('wrap-color-grid', selectWrapColor);
+    buildLiveryList(data.liveries || []);
+    buildCatalogList(data.catalog || []);
+
+    document.querySelectorAll('.wrap-zone-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-zone="primary"]').classList.add('active');
+    document.querySelectorAll('.material-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-material="gloss"]').classList.add('active');
+
+    updateWrapPrice();
 }
 
 document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveTab(tab.dataset.type));
 });
 
+document.querySelectorAll('.wrap-zone-btn').forEach(btn => {
+    btn.addEventListener('click', () => setWrapZone(btn.dataset.zone));
+});
+
+document.querySelectorAll('.material-btn').forEach(btn => {
+    btn.addEventListener('click', () => setWrapMaterial(btn.dataset.material));
+});
+
 document.getElementById('btn-apply').addEventListener('click', () => {
-    if (state.paintType === 'chrome') {
-        post('paintConfirm', { type: 'chrome', colorIndex: 120, pearlIndex: -1 });
-    } else if (state.colorIndex < 0) {
-        return;
+    if (currentMode === 'paint') {
+        if (paintState.paintType === 'chrome') {
+            post('paintConfirm', { type: 'chrome', colorIndex: 120, pearlIndex: -1 });
+        } else if (paintState.colorIndex < 0) {
+            return;
+        } else {
+            post('paintConfirm', {
+                type: paintState.paintType,
+                colorIndex: paintState.colorIndex,
+                pearlIndex: paintState.pearlIndex
+            });
+        }
     } else {
-        post('paintConfirm', {
-            type: state.paintType,
-            colorIndex: state.colorIndex,
-            pearlIndex: state.pearlIndex
-        });
+        if (wrapState.catalogId >= 0) {
+            post('wrapConfirm', { catalogId: wrapState.catalogId });
+        } else if (wrapState.primaryColor < 0 && wrapState.liveryIndex < 0) {
+            return;
+        } else {
+            post('wrapConfirm', {
+                primaryColor: wrapState.primaryColor,
+                secondaryColor: wrapState.secondaryColor,
+                material: wrapState.material,
+                liveryIndex: wrapState.liveryIndex
+            });
+        }
     }
 });
 
 document.getElementById('btn-cancel').addEventListener('click', () => {
-    post('paintCancel', {});
+    post(currentMode === 'paint' ? 'paintCancel' : 'wrapCancel', {});
 });
 
 window.addEventListener('message', (event) => {
     const data = event.data;
 
-    if (data.action === 'open') {
-        state.basePrice = data.basePrice || 500;
-        state.multipliers = data.multipliers || {};
-        document.getElementById('paint-panel').classList.remove('hidden');
-        buildColorGrid('color-grid', selectColor);
-        buildColorGrid('pearl-grid', selectColor);
-        setActiveTab('standard');
+    if (data.action === 'open' && data.mode === 'paint') {
+        openPaintMode(data);
+    }
+
+    if (data.action === 'open' && data.mode === 'wrap') {
+        openWrapMode(data);
     }
 
     if (data.action === 'close') {
         document.getElementById('paint-panel').classList.add('hidden');
-        state.colorIndex = -1;
-        state.pearlIndex = -1;
+        paintState.colorIndex = -1;
+        paintState.pearlIndex = -1;
+        wrapState.primaryColor = -1;
+        wrapState.secondaryColor = -1;
+        wrapState.liveryIndex = -1;
+        wrapState.catalogId = -1;
     }
 });
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        post('paintCancel', {});
+        post(currentMode === 'paint' ? 'paintCancel' : 'wrapCancel', {});
     }
 });

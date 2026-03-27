@@ -83,6 +83,7 @@ function PaintBooth.Open(vehicle)
     SetNuiFocus(true, true)
     SendNUIMessage({
         action = 'open',
+        mode = 'paint',
         basePrice = Config.PaintBooth.basePrice,
         multipliers = Config.PaintBooth.priceMultipliers
     })
