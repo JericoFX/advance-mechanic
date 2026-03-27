@@ -310,3 +310,16 @@ Config.PaintBooth = {
         pearlescent = 2.5
     }
 }
+
+Config.Wrapping = {
+    enabled = true,
+    requireLift = false,
+    basePrice = 2000,
+    maxDistance = 5.0,
+    materials = {
+        gloss = { paintType = 0, priceMultiplier = 1.0 },
+        matte = { paintType = 3, priceMultiplier = 1.3 },
+        satin = { paintType = 0, pearlescent = true, priceMultiplier = 1.5 },
+        carbon = { paintType = 3, baseColor = 12, priceMultiplier = 2.0 }
+    }
+}

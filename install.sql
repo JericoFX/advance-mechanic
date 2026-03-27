@@ -152,3 +152,17 @@ ALTER TABLE `mechanic_shops`
 ALTER TABLE `mechanic_shops`
   ADD COLUMN IF NOT EXISTS `lifts` longtext DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `vehicleSpawns` longtext DEFAULT NULL;
+
+CREATE TABLE IF NOT EXISTS `wrap_catalog` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(100) NOT NULL,
+    `primary_color` INT(3) NOT NULL,
+    `secondary_color` INT(3) NOT NULL,
+    `paint_type` TINYINT(1) DEFAULT 0,
+    `pearlescent_color` INT(3) DEFAULT NULL,
+    `price` INT(11) NOT NULL DEFAULT 2000,
+    `shop_id` INT(11) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_shop_id` (`shop_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

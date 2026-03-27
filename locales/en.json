@@ -404,5 +404,17 @@
   "paint_cancelled": "Paint cancelled",
   "paint_insufficient_funds": "Insufficient funds for paint job",
   "paint_invalid_vehicle": "No valid vehicle nearby",
-  "paint_no_permission": "You don't have permission to use the paint booth"
+  "paint_no_permission": "You don't have permission to use the paint booth",
+  "vehicle_wrapping": "Vehicle Wrapping",
+  "vehicle_wrapping_desc": "Custom wraps and liveries",
+  "wrap_zone_primary": "Primary Body",
+  "wrap_zone_secondary": "Accent Panels",
+  "wrap_material_gloss": "Gloss",
+  "wrap_material_matte": "Matte",
+  "wrap_material_satin": "Satin",
+  "wrap_material_carbon": "Carbon Fiber",
+  "wrap_applied": "Wrap applied successfully",
+  "wrap_cancelled": "Wrap cancelled",
+  "wrap_no_liveries": "No liveries available for this vehicle",
+  "wrap_insufficient_funds": "Insufficient funds for wrap"
 }

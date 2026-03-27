@@ -26,9 +26,13 @@ CREATE TABLE IF NOT EXISTS `mechanic_employees` (
     `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
     `shop_id` INT(11) UNSIGNED NOT NULL,
     `citizenid` VARCHAR(50) NOT NULL,
-    `grade` INT(2) DEFAULT 0,
-    `wage` INT(5) DEFAULT 15,
+    `name` VARCHAR(100) DEFAULT NULL,
+    `grade` INT(11) NOT NULL DEFAULT 0,
+    `wage` DECIMAL(10,2) NOT NULL DEFAULT 15.00,
     `hired_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `on_duty` TINYINT(1) NOT NULL DEFAULT 0,
+    `last_clock_in` TIMESTAMP NULL DEFAULT NULL,
+    `total_hours` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_shop_employee` (`shop_id`, `citizenid`),
     KEY `idx_citizenid` (`citizenid`),
@@ -65,15 +69,14 @@ CREATE TABLE IF NOT EXISTS `mechanic_transactions` (
 -- Employee work schedules
 CREATE TABLE IF NOT EXISTS `mechanic_schedules` (
     `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-    `shop_id` INT(11) UNSIGNED NOT NULL,
-    `citizenid` VARCHAR(50) NOT NULL,
-    `day_of_week` TINYINT(1) NOT NULL, -- 0=Sunday, 6=Saturday
-    `start_time` TIME,
-    `end_time` TIME,
+    `employee_id` INT(11) UNSIGNED NOT NULL,
+    `day_of_week` INT(11) NOT NULL, -- 0=Sunday, 6=Saturday
+    `start_time` TIME NOT NULL,
+    `end_time` TIME NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_schedule` (`shop_id`, `citizenid`, `day_of_week`),
-    KEY `idx_employee_schedule` (`citizenid`),
-    FOREIGN KEY (`shop_id`) REFERENCES `mechanic_shops`(`id`) ON DELETE CASCADE
+    KEY `idx_employee_id` (`employee_id`),
+    FOREIGN KEY (`employee_id`) REFERENCES `mechanic_employees`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Payroll records
@@ -114,11 +117,25 @@ CREATE TABLE IF NOT EXISTS `mechanic_maintenance_history` (
 
 -- Insert default shop funds record trigger
 DELIMITER //
-CREATE TRIGGER IF NOT EXISTS `trg_create_shop_funds` 
+CREATE TRIGGER IF NOT EXISTS `trg_create_shop_funds`
 AFTER INSERT ON `mechanic_shops`
 FOR EACH ROW
 BEGIN
-    INSERT INTO `mechanic_shop_funds` (`shop_id`, `balance`) 
+    INSERT INTO `mechanic_shop_funds` (`shop_id`, `balance`)
     VALUES (NEW.id, 0);
 END//
 DELIMITER ;
+
+CREATE TABLE IF NOT EXISTS `wrap_catalog` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(100) NOT NULL,
+    `primary_color` INT(3) NOT NULL,
+    `secondary_color` INT(3) NOT NULL,
+    `paint_type` TINYINT(1) DEFAULT 0,
+    `pearlescent_color` INT(3) DEFAULT NULL,
+    `price` INT(11) NOT NULL DEFAULT 2000,
+    `shop_id` INT(11) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_shop_id` (`shop_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
