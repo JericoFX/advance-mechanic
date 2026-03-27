@@ -51,6 +51,7 @@ local Diagnostic = require 'client.modules.diagnostic'
 local FluidEffects = require 'client.modules.fluid_effects'
 local VisualEffects = require 'client.modules.visual_effects'
 local PaintBooth = require 'client.modules.paint_booth'
+local Wrapping = require 'client.modules.wrapping'
 
 local function resolveTowVehicleConfig(vehicle)
     if not vehicle then return nil end
@@ -200,6 +201,22 @@ lib.registerContext({
                 local vehicle = lib.getClosestVehicle(GetEntityCoords(cache.ped), 5.0, false)
                 if vehicle then
                     PaintBooth.Open(vehicle)
+                else
+                    lib.notify({
+                        title = locale('paint_invalid_vehicle'),
+                        type = 'error'
+                    })
+                end
+            end
+        },
+        {
+            title = locale('vehicle_wrapping'),
+            icon = 'fas fa-palette',
+            description = locale('vehicle_wrapping_desc'),
+            onSelect = function()
+                local vehicle = lib.getClosestVehicle(GetEntityCoords(cache.ped), 5.0, false)
+                if vehicle then
+                    Wrapping.Open(vehicle)
                 else
                     lib.notify({
                         title = locale('paint_invalid_vehicle'),
