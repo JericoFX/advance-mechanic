@@ -52,6 +52,7 @@ local FluidEffects = require 'client.modules.fluid_effects'
 local VisualEffects = require 'client.modules.visual_effects'
 local PaintBooth = require 'client.modules.paint_booth'
 local Wrapping = require 'client.modules.wrapping'
+local SuspensionSetup = require 'client.modules.suspension_setup'
 
 local function resolveTowVehicleConfig(vehicle)
     if not vehicle then return nil end
@@ -217,6 +218,22 @@ lib.registerContext({
                 local vehicle = lib.getClosestVehicle(GetEntityCoords(cache.ped), 5.0, false)
                 if vehicle then
                     Wrapping.Open(vehicle)
+                else
+                    lib.notify({
+                        title = locale('paint_invalid_vehicle'),
+                        type = 'error'
+                    })
+                end
+            end
+        },
+        {
+            title = locale('suspension_setup'),
+            icon = 'fas fa-sliders-h',
+            description = locale('suspension_setup_desc'),
+            onSelect = function()
+                local vehicle = lib.getClosestVehicle(GetEntityCoords(cache.ped), 5.0, false)
+                if vehicle then
+                    SuspensionSetup.Open(vehicle)
                 else
                     lib.notify({
                         title = locale('paint_invalid_vehicle'),
