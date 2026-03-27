@@ -139,3 +139,28 @@ CREATE TABLE IF NOT EXISTS `wrap_catalog` (
     PRIMARY KEY (`id`),
     KEY `idx_shop_id` (`shop_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `vehicle_suspension` (
+    `plate` VARCHAR(15) NOT NULL,
+    `front_height` DECIMAL(4,3) DEFAULT 0.000,
+    `rear_height` DECIMAL(4,3) DEFAULT 0.000,
+    `stiffness` INT(3) DEFAULT 50,
+    `front_camber` DECIMAL(4,1) DEFAULT 0.0,
+    `rear_camber` DECIMAL(4,1) DEFAULT 0.0,
+    `front_toe` DECIMAL(4,1) DEFAULT 0.0,
+    `rear_toe` DECIMAL(4,1) DEFAULT 0.0,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`plate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `suspension_presets` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `shop_id` INT(11) NOT NULL,
+    `name` VARCHAR(50) NOT NULL,
+    `data` LONGTEXT NOT NULL,
+    `created_by` VARCHAR(50) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_shop_preset` (`shop_id`, `name`),
+    FOREIGN KEY (`shop_id`) REFERENCES `mechanic_shops`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

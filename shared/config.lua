@@ -323,3 +323,21 @@ Config.Wrapping = {
         carbon = { paintType = 3, baseColor = 12, priceMultiplier = 2.0 }
     }
 }
+
+Config.Suspension = {
+    enabled = true,
+    requireLift = true,
+    basePrice = 1000,
+    perParameterCost = 200,
+    maxPresets = 20,
+    maxDistance = 5.0,
+    ranges = {
+        frontHeight = { min = -0.10, max = 0.10 },
+        rearHeight = { min = -0.10, max = 0.10 },
+        stiffness = { min = 0, max = 100 },
+        frontCamber = { min = -15.0, max = 15.0 },
+        rearCamber = { min = -15.0, max = 15.0 },
+        frontToe = { min = -5.0, max = 5.0 },
+        rearToe = { min = -5.0, max = 5.0 }
+    }
+}
