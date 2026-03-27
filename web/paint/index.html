@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="paint-panel" class="panel hidden">
+        <div class="panel-header">
+            <h2 id="panel-title">Paint Booth</h2>
+            <span id="price-display">$0</span>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-type="standard">Standard</button>
+            <button class="tab" data-type="metallic">Metallic</button>
+            <button class="tab" data-type="matte">Matte</button>
+            <button class="tab" data-type="chrome">Chrome</button>
+            <button class="tab" data-type="pearlescent">Pearlescent</button>
+        </div>
+
+        <div id="color-grid" class="color-grid"></div>
+
+        <div id="pearlescent-section" class="pearlescent-section hidden">
+            <label>Pearlescent Overlay</label>
+            <div id="pearl-grid" class="color-grid"></div>
+        </div>
+
+        <div class="panel-footer">
+            <button id="btn-apply" class="btn btn-apply">Apply</button>
+            <button id="btn-cancel" class="btn btn-cancel">Cancel</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
