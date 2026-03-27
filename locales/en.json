@@ -1,5 +1,6 @@
 {
   "mechanic_menu": "Mechanic Menu",
+  "no_shop_assigned": "You must be assigned to a mechanic shop.",
   "inspect_vehicle": "Inspect Vehicle",
   "perform_maintenance": "Perform Maintenance",
   "start_mission": "Start Mission",
@@ -391,5 +392,17 @@
   "health_status": "Health: %s%%",
   "repair_all": "Repair All",
   "repair_all_issues": "Repair all %s issues",
-  "checking_part": "Checking %s..."
+  "checking_part": "Checking %s...",
+  "paint_booth": "Paint Booth",
+  "paint_booth_desc": "Professional vehicle painting",
+  "paint_type_standard": "Standard",
+  "paint_type_metallic": "Metallic",
+  "paint_type_matte": "Matte",
+  "paint_type_chrome": "Chrome",
+  "paint_type_pearlescent": "Pearlescent",
+  "paint_applied": "Paint applied successfully",
+  "paint_cancelled": "Paint cancelled",
+  "paint_insufficient_funds": "Insufficient funds for paint job",
+  "paint_invalid_vehicle": "No valid vehicle nearby",
+  "paint_no_permission": "You don't have permission to use the paint booth"
 }

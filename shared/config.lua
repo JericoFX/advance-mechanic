@@ -296,3 +296,17 @@ Config.Animations = {
         duration = 3000
     }
 }
+
+Config.PaintBooth = {
+    enabled = true,
+    requireLift = false,
+    basePrice = 500,
+    maxDistance = 5.0,
+    priceMultipliers = {
+        standard = 1.0,
+        metallic = 1.5,
+        matte = 2.0,
+        chrome = 3.0,
+        pearlescent = 2.5
+    }
+}
