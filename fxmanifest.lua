@@ -8,6 +8,8 @@ version '1.0.0'
 
 ox_lib 'locale'
 
+ui_page 'web/paint/index.html'
+
 shared_scripts {
     '@ox_lib/init.lua',
     'shared/*.lua'
@@ -28,11 +30,13 @@ server_scripts {
 }
 
 files {
-    'locales/*.json'
+    'locales/*.json',
+    'web/paint/index.html',
+    'web/paint/style.css',
+    'web/paint/script.js'
 }
 
 dependencies {
-    --'advance-manager',
     'ox_lib',
     'oxmysql',
     'ox_inventory',

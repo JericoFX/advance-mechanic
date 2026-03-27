@@ -10,6 +10,31 @@ local function isMechanic()
     return job and job.name == Config.JobName
 end
 
+local cachedShopId = nil
+local shopCheckDirty = true
+
+local function refreshShopMembership()
+    if not isMechanic() then
+        cachedShopId = nil
+        shopCheckDirty = false
+        return
+    end
+    cachedShopId = lib.callback.await('mechanic:server:getPlayerShop', false)
+    shopCheckDirty = false
+end
+
+local function canOpenMechanicMenu()
+    if not isMechanic() then return false end
+    if shopCheckDirty then
+        refreshShopMembership()
+    end
+    return cachedShopId ~= nil
+end
+
+local function invalidateShopCache()
+    shopCheckDirty = true
+end
+
 -- Load modules
 local Inspection = require 'client.modules.inspection'
 local Maintenance = require 'client.modules.maintenance'
@@ -25,6 +50,7 @@ local Billing = require 'client.modules.billing'
 local Diagnostic = require 'client.modules.diagnostic'
 local FluidEffects = require 'client.modules.fluid_effects'
 local VisualEffects = require 'client.modules.visual_effects'
+local PaintBooth = require 'client.modules.paint_booth'
 
 local function resolveTowVehicleConfig(vehicle)
     if not vehicle then return nil end
@@ -69,6 +95,7 @@ local playerLoaded = false
 -- Player loaded event
 Framework.OnPlayerLoaded(function()
     playerLoaded = true
+    invalidateShopCache()
 
     -- Load shops
     Shops.LoadShops()
@@ -83,6 +110,8 @@ end)
 -- Player unloaded event
 Framework.OnPlayerUnload(function()
     playerLoaded = false
+    cachedShopId = nil
+    shopCheckDirty = true
 end)
 
 -- Resource start
@@ -99,6 +128,7 @@ end)
 
 -- Shop updates
 RegisterNetEvent('mechanic:client:shopsUpdated', function(shops)
+    invalidateShopCache()
     -- Update zones for all modules
     Lifts.CreateZones(shops)
     Parts.CreateZones(shops)
@@ -157,6 +187,22 @@ lib.registerContext({
                 else
                     lib.notify({
                         title = locale('no_vehicle_nearby'),
+                        type = 'error'
+                    })
+                end
+            end
+        },
+        {
+            title = locale('paint_booth'),
+            icon = 'fas fa-spray-can',
+            description = locale('paint_booth_desc'),
+            onSelect = function()
+                local vehicle = lib.getClosestVehicle(GetEntityCoords(cache.ped), 5.0, false)
+                if vehicle then
+                    PaintBooth.Open(vehicle)
+                else
+                    lib.notify({
+                        title = locale('paint_invalid_vehicle'),
                         type = 'error'
                     })
                 end
@@ -222,8 +268,10 @@ lib.registerContext({
 
 -- Event to open mechanic menu from server command
 RegisterNetEvent('mechanic:client:openMenu', function()
-    if isMechanic() then
+    if canOpenMechanicMenu() then
         lib.showContext('mechanic_main_menu')
+    else
+        lib.notify({ title = locale('no_shop_assigned'), type = 'error' })
     end
 end)
 
@@ -233,8 +281,12 @@ lib.addKeybind({
     description = locale('open_mechanic_menu'),
     defaultKey = 'F6',
     onPressed = function()
-        if isMechanic() then
+        if canOpenMechanicMenu() then
             lib.showContext('mechanic_main_menu')
+        else
+            if isMechanic() then
+                lib.notify({ title = locale('no_shop_assigned'), type = 'error' })
+            end
         end
     end
 })
@@ -246,7 +298,7 @@ exports.ox_target:addGlobalVehicle({
         icon = 'fas fa-oil-can',
         label = locale('perform_maintenance'),
         canInteract = function(entity, distance, coords, name)
-            return isMechanic() and distance < 3.0
+            return canOpenMechanicMenu() and distance < 3.0
         end,
         onSelect = function(data)
             local maintenanceOptions = {}
