@@ -4,7 +4,7 @@ lua54 'yes'
 
 author 'JericoFX'
 description 'Complete mechanic job with realistic damage, inspection, and management'
-version '1.1.0'
+version '1.1.1'
 
 ox_lib 'locale'
 
