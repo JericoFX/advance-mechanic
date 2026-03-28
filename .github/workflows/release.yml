@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'version.txt'
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
@@ -38,8 +40,12 @@ jobs:
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           mkdir -p build/advance-mechanic
-          cp -r client server shared web locales sql build/advance-mechanic/
-          cp fxmanifest.lua version_check.lua version.txt install.sql LICENSE README.md build/advance-mechanic/
+          for dir in client server shared locales sql; do
+            [ -d "$dir" ] && cp -r "$dir" build/advance-mechanic/
+          done
+          for file in fxmanifest.lua version_check.lua version.txt install.sql LICENSE README.md; do
+            [ -f "$file" ] && cp "$file" build/advance-mechanic/
+          done
           cd build
           zip -r ../advance-mechanic-v${{ steps.version.outputs.version }}.zip advance-mechanic/
 
