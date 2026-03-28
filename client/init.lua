@@ -53,6 +53,7 @@ local VisualEffects = require 'client.modules.visual_effects'
 local PaintBooth = require 'client.modules.paint_booth'
 local Wrapping = require 'client.modules.wrapping'
 local SuspensionSetup = require 'client.modules.suspension_setup'
+local EngineSwap = require 'client.modules.engine_swap'
 
 local function resolveTowVehicleConfig(vehicle)
     if not vehicle then return nil end
@@ -107,6 +108,8 @@ Framework.OnPlayerLoaded(function()
 
     -- Initialize fluid effects monitoring
     FluidEffects.Monitor()
+
+    EngineSwap.Monitor()
 end)
 
 -- Player unloaded event
@@ -125,6 +128,7 @@ AddEventHandler('onResourceStart', function(resourceName)
         Shops.LoadShops()
         Damage.Monitor()
         FluidEffects.Monitor()
+        EngineSwap.Monitor()
     end
 end)
 
@@ -237,6 +241,22 @@ lib.registerContext({
                 else
                     lib.notify({
                         title = locale('paint_invalid_vehicle'),
+                        type = 'error'
+                    })
+                end
+            end
+        },
+        {
+            title = locale('engine_swap'),
+            icon = 'fas fa-gears',
+            description = locale('engine_swap_desc'),
+            onSelect = function()
+                local vehicle = lib.getClosestVehicle(GetEntityCoords(cache.ped), 5.0, false)
+                if vehicle then
+                    EngineSwap.Open(vehicle)
+                else
+                    lib.notify({
+                        title = locale('no_vehicle_nearby'),
                         type = 'error'
                     })
                 end

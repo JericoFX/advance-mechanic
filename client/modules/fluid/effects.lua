@@ -56,6 +56,23 @@ end
 
 function Effects.applyEngine(vehicle, oilLevel, coolantLevel)
     local state = Entity(vehicle).state
+
+    if state.engineData then
+        if oilLevel < 30 and not state.lowOilWarning then
+            state:set('lowOilWarning', true, true)
+            lib.notify({ title = locale('low_engine_oil'), description = locale('engine_damage_risk'), type = 'error', duration = 8000 })
+        elseif oilLevel >= 30 then
+            state:set('lowOilWarning', false, true)
+        end
+        if coolantLevel < 30 and not state.lowCoolantWarning then
+            state:set('lowCoolantWarning', true, true)
+            lib.notify({ title = locale('low_coolant'), description = locale('engine_overheating'), type = 'warning', duration = 8000 })
+        elseif coolantLevel >= 30 then
+            state:set('lowCoolantWarning', false, true)
+        end
+        return
+    end
+
     local engineTemp = state.engineTemp or 90
 
     if oilLevel < 30 then

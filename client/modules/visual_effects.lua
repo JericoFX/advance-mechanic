@@ -82,13 +82,11 @@ function VisualEffects.PlayAnimation(animationType, duration)
     
     local ped = PlayerPedId()
     
-    -- Load animation
-    lib.requestAnimDict(animData.dict)
-    
-    -- Create prop if needed
+    if not lib.requestAnimDict(animData.dict) then return end
+
     local prop = nil
     if animData.prop then
-        lib.requestModel(animData.prop.model)
+        if not lib.requestModel(animData.prop.model) then return end
         prop = CreateObject(animData.prop.model, 0.0, 0.0, 0.0, true, true, false)
         AttachEntityToEntity(prop, ped, GetPedBoneIndex(ped, animData.prop.bone),
             animData.prop.pos.x, animData.prop.pos.y, animData.prop.pos.z,
@@ -111,10 +109,7 @@ function VisualEffects.CreateParticleAtCoords(effectType, coords, duration)
     local effect = particleEffects[effectType]
     if not effect then return end
     
-    -- Request particle dictionary
-    lib.requestNamedPtfxAsset(effect.dict)
-    
-    -- Use particle effect
+    if not lib.requestNamedPtfxAsset(effect.dict) then return end
     UseParticleFxAssetNextCall(effect.dict)
     local particleHandle = StartParticleFxLoopedAtCoord(
         effect.name,
@@ -138,10 +133,7 @@ function VisualEffects.CreateParticleOnEntity(effectType, entity, offset, durati
     local effect = particleEffects[effectType]
     if not effect then return end
     
-    -- Request particle dictionary
-    lib.requestNamedPtfxAsset(effect.dict)
-    
-    -- Use particle effect
+    if not lib.requestNamedPtfxAsset(effect.dict) then return end
     UseParticleFxAssetNextCall(effect.dict)
     local particleHandle = StartParticleFxLoopedOnEntity(
         effect.name,

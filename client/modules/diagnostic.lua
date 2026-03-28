@@ -272,7 +272,7 @@ function Diagnostic.PerformanceAnalysis(vehicle)
             description = locale('kmh', math.floor(handling * 3.6)),
             icon = 'fas fa-tachometer-alt',
             iconColor = '#e74c3c',
-            progress = (handling / 200) * 100,
+            progress = math.min(100, (handling / 200) * 100),
             colorScheme = 'blue',
             disabled = true
         },
@@ -281,7 +281,7 @@ function Diagnostic.PerformanceAnalysis(vehicle)
             description = locale('zero_to_100'),
             icon = 'fas fa-rocket',
             iconColor = '#f39c12',
-            progress = (acceleration / 0.5) * 100,
+            progress = math.min(100, (acceleration / 0.5) * 100),
             colorScheme = 'orange',
             disabled = true
         },
@@ -290,7 +290,7 @@ function Diagnostic.PerformanceAnalysis(vehicle)
             description = locale('braking_efficiency'),
             icon = 'fas fa-stop-circle',
             iconColor = '#e67e22',
-            progress = (braking / 2.0) * 100,
+            progress = math.min(100, (braking / 2.0) * 100),
             colorScheme = 'red',
             disabled = true
         },
@@ -329,7 +329,30 @@ function Diagnostic.PerformanceAnalysis(vehicle)
             disabled = true
         }
     }
-    
+
+    local engineState = Entity(vehicle).state
+    local engineData = engineState and engineState.engineData
+    if engineData then
+        local engineConfig = Config.Engines[engineData.engineId]
+        local engineName = engineConfig and engineConfig.name or engineData.engineId
+        local wearPct = engineData.wear or 0
+        local tempC = engineData.temperature or 20
+
+        table.insert(options, {
+            title = locale('engine_swap') .. ': ' .. engineName,
+            icon = 'fas fa-gears',
+            iconColor = '#3498db',
+            disabled = true,
+            metadata = {
+                { label = locale('engine_hp'), value = (engineConfig and engineConfig.hp or '?') .. ' HP' },
+                { label = locale('engine_torque'), value = (engineConfig and engineConfig.torque or '?') .. ' Nm' },
+                { label = locale('engine_temperature'), value = string.format('%.0f°C', tempC) },
+                { label = locale('engine_wear'), value = string.format('%.1f%%', wearPct) },
+                { label = locale('engine_total_km'), value = string.format('%.1f km', engineData.totalKm or 0) }
+            }
+        })
+    end
+
     lib.registerContext({
         id = 'performance_analysis',
         title = locale('performance_analysis'),

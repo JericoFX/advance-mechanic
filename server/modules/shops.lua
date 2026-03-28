@@ -412,19 +412,29 @@ function Shops.SpawnServiceVehicle(source, model, coords)
     end
     
   
-    local plate = 'MECH' .. math.random(1000, 9999)
+    local plate
+    for _ = 1, 20 do
+        local candidate = 'MECH' .. math.random(1000, 9999)
+        local owned = Validation.IsVehicleOwned(candidate)
+        if not owned then
+            plate = candidate
+            break
+        end
+    end
+    if not plate then
+        DeleteEntity(vehicle)
+        return false
+    end
+
     lib.setVehicleProperties(vehicle, {
         plate = plate,
         bodyHealth = 1000.0,
         engineHealth = 1000.0,
         fuelLevel = 100.0
     })
-    
-    -- Set owner
+
     SetPedIntoVehicle(GetPlayerPed(source), vehicle, -1)
-    
-    -- Give keys (assuming you have a key system)
-    TriggerEvent('vehiclekeys:server:givekeys', source, plate)
+    TriggerClientEvent('vehiclekeys:client:SetOwner', source, plate)
 
     return true
 end
@@ -712,6 +722,35 @@ lib.callback.register('mechanic:server:restockItem', function(source, shopId, it
     Database.UpdateShopStorage(shopId, shop.storage)
 
     return true
+end)
+
+-- Check if player belongs to any shop (owner or employee)
+lib.callback.register('mechanic:server:getPlayerShop', function(source)
+    local Player = Framework.GetPlayer(source)
+    if not Player then return nil end
+    if not Validation.IsMechanic(Player) then return nil end
+
+    local citizenid = Player.PlayerData.citizenid
+
+    for _, shop in ipairs(shopCache) do
+        if shop.owner and shop.owner == citizenid then
+            return shop.id
+        end
+    end
+
+    local result = MySQL.query.await('SELECT shop_id FROM mechanic_employees WHERE citizenid = ? LIMIT 1', { citizenid })
+    if result and result[1] then
+        return result[1].shop_id
+    end
+
+    for _, shop in ipairs(shopCache) do
+        local rank = Business.getEmployeeRank(citizenid, shop.id)
+        if rank and rank > 0 then
+            return shop.id
+        end
+    end
+
+    return nil
 end)
 
 -- Events

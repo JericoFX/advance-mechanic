@@ -155,4 +155,9 @@ function FluidEffects.Monitor()
     end)
 end
 
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+    FluidEffects.Stop()
+end)
+
 return FluidEffects

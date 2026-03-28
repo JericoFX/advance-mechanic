@@ -1,0 +1,53 @@
+name: Build Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'version.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: echo "version=$(cat version.txt | tr -d '[:space:]')" >> $GITHUB_OUTPUT
+
+      - name: Check tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sync fxmanifest version
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          sed -i "s/^version '.*'/version '${{ steps.version.outputs.version }}'/" fxmanifest.lua
+
+      - name: Build zip
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          mkdir -p build/advance-mechanic
+          cp -r client server shared web locales sql build/advance-mechanic/
+          cp fxmanifest.lua version_check.lua version.txt install.sql LICENSE README.md build/advance-mechanic/
+          cd build
+          zip -r ../advance-mechanic-v${{ steps.version.outputs.version }}.zip advance-mechanic/
+
+      - name: Create tag and release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: advance-mechanic-v${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true

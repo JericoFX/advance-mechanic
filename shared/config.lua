@@ -57,12 +57,12 @@ Config.Billing = {
 
 Config.Tuning = {
     performanceMods = {
-        [11] = { maxLevel = 4, basePrice = 5000 },
-        [12] = { maxLevel = 3, basePrice = 3000 },
-        [13] = { maxLevel = 3, basePrice = 4000 },
-        [15] = { maxLevel = 4, basePrice = 3500 },
-        [16] = { maxLevel = 5, basePrice = 7500 },
-        [18] = { maxLevel = 1, basePrice = 15000 }
+        [11] = { maxLevel = 4, basePrice = 5000, label = 'Engine' },
+        [12] = { maxLevel = 3, basePrice = 3000, label = 'Brakes' },
+        [13] = { maxLevel = 3, basePrice = 4000, label = 'Transmission' },
+        [15] = { maxLevel = 4, basePrice = 3500, label = 'Turbo/SC' },
+        [16] = { maxLevel = 5, basePrice = 7500, label = 'Exhaust' },
+        [18] = { maxLevel = 1, basePrice = 15000, label = 'Turbo Toggle' }
     },
     visualMods = {
         [0] = { basePrice = 3000 },
@@ -102,7 +102,9 @@ Config.Security = {
         missionCompleteMs = 2000,
         billingMs = 2000,
         diagnosticReportMs = 2000,
-        repairComponentMs = 2000
+        repairComponentMs = 2000,
+        engineSwapMs = 2000,
+        engineSyncMs = 5000
     },
     diagnosticMaxDepth = 2,
     diagnosticMaxKeys = 64,
@@ -339,5 +341,201 @@ Config.Suspension = {
         rearCamber = { min = -15.0, max = 15.0 },
         frontToe = { min = -5.0, max = 5.0 },
         rearToe = { min = -5.0, max = 5.0 }
+    }
+}
+
+Config.EngineSwap = {
+    enabled = true,
+    requireLift = true,
+    maxDistance = 5.0,
+    removeInstallTime = 120,
+    syncInterval = 30,
+    temperatureThresholds = {
+        warning = 90,
+        critical = 105
+    },
+    wearThresholds = {
+        light = 30,
+        moderate = 60,
+        heavy = 80,
+        critical = 100
+    },
+    misfireChance = 0.15,
+    breakdownChance = 0.05
+}
+
+Config.VehicleClassDefaults = {
+    [0]  = { engine = 'i4_stock',  drivetrain = 'fwd' },
+    [1]  = { engine = 'i4_turbo',  drivetrain = 'fwd' },
+    [2]  = { engine = 'v6_stock',  drivetrain = 'rwd' },
+    [3]  = { engine = 'i4_stock',  drivetrain = 'fwd' },
+    [4]  = { engine = 'v8_stock',  drivetrain = 'rwd' },
+    [5]  = { engine = 'v6_turbo',  drivetrain = 'rwd' },
+    [6]  = { engine = 'v6_turbo',  drivetrain = 'rwd' },
+    [7]  = { engine = 'v8_ls3',    drivetrain = 'rwd' },
+    [8]  = { engine = 'v8_stock',  drivetrain = 'rwd' },
+    [9]  = { engine = 'v8_stock',  drivetrain = 'awd' },
+    [10] = { engine = 'v6_stock',  drivetrain = 'awd' },
+    [11] = { engine = 'v6_stock',  drivetrain = 'rwd' },
+    [12] = { engine = 'v6_stock',  drivetrain = 'rwd' },
+    [13] = { engine = 'i4_stock',  drivetrain = 'fwd' }
+}
+
+Config.Engines = {
+    ['i4_stock'] = {
+        name = 'Inline-4 Stock',
+        type = 'i4',
+        hp = 150,
+        torque = 200,
+        weight = 120.0,
+        rpmMax = 7000,
+        rpmRedline = 6500,
+        fuelConsumption = 0.8,
+        heatRate = 0.6,
+        coolingEfficiency = 1.0,
+        wearRate = 0.3,
+        drivetrainCompat = { 'fwd', 'rwd', 'awd' },
+        requiredParts = { 'motor_mount_i4', 'wiring_harness' },
+        transmissionCompat = { '5speed', '6speed', 'cvt' },
+        installTime = 180,
+        price = 5000,
+        torqueCurve = {
+            { rpm = 1000, percent = 40 },
+            { rpm = 2000, percent = 60 },
+            { rpm = 3500, percent = 85 },
+            { rpm = 5000, percent = 100 },
+            { rpm = 6500, percent = 90 },
+            { rpm = 7000, percent = 75 }
+        }
+    },
+    ['i4_turbo'] = {
+        name = 'Inline-4 Turbo',
+        type = 'i4',
+        hp = 250,
+        torque = 350,
+        weight = 135.0,
+        rpmMax = 7500,
+        rpmRedline = 7000,
+        fuelConsumption = 1.2,
+        heatRate = 0.9,
+        coolingEfficiency = 0.9,
+        wearRate = 0.5,
+        drivetrainCompat = { 'fwd', 'rwd', 'awd' },
+        requiredParts = { 'motor_mount_i4', 'wiring_harness', 'ecu_adapter' },
+        transmissionCompat = { '5speed', '6speed' },
+        installTime = 200,
+        price = 12000,
+        torqueCurve = {
+            { rpm = 1000, percent = 35 },
+            { rpm = 2500, percent = 70 },
+            { rpm = 3500, percent = 95 },
+            { rpm = 5000, percent = 100 },
+            { rpm = 6500, percent = 88 },
+            { rpm = 7500, percent = 70 }
+        }
+    },
+    ['v6_stock'] = {
+        name = 'V6 3.5L Stock',
+        type = 'v6',
+        hp = 280,
+        torque = 350,
+        weight = 160.0,
+        rpmMax = 6800,
+        rpmRedline = 6200,
+        fuelConsumption = 1.2,
+        heatRate = 0.8,
+        coolingEfficiency = 0.9,
+        wearRate = 0.4,
+        drivetrainCompat = { 'fwd', 'rwd', 'awd' },
+        requiredParts = { 'motor_mount_v6', 'wiring_harness' },
+        transmissionCompat = { '5speed', '6speed', '6speed_auto' },
+        installTime = 220,
+        price = 15000,
+        torqueCurve = {
+            { rpm = 1000, percent = 45 },
+            { rpm = 2500, percent = 70 },
+            { rpm = 4000, percent = 95 },
+            { rpm = 5000, percent = 100 },
+            { rpm = 6000, percent = 88 },
+            { rpm = 6800, percent = 72 }
+        }
+    },
+    ['v6_turbo'] = {
+        name = 'V6 3.5L Twin-Turbo',
+        type = 'v6',
+        hp = 380,
+        torque = 470,
+        weight = 175.0,
+        rpmMax = 7200,
+        rpmRedline = 6600,
+        fuelConsumption = 1.5,
+        heatRate = 1.0,
+        coolingEfficiency = 0.85,
+        wearRate = 0.5,
+        drivetrainCompat = { 'rwd', 'awd' },
+        requiredParts = { 'motor_mount_v6', 'wiring_harness', 'ecu_adapter' },
+        transmissionCompat = { '6speed', '6speed_auto' },
+        installTime = 260,
+        price = 22000,
+        torqueCurve = {
+            { rpm = 1000, percent = 45 },
+            { rpm = 2500, percent = 75 },
+            { rpm = 3500, percent = 95 },
+            { rpm = 4500, percent = 100 },
+            { rpm = 6000, percent = 90 },
+            { rpm = 7200, percent = 72 }
+        }
+    },
+    ['v8_stock'] = {
+        name = 'V8 5.0L Stock',
+        type = 'v8',
+        hp = 360,
+        torque = 500,
+        weight = 180.0,
+        rpmMax = 6500,
+        rpmRedline = 6000,
+        fuelConsumption = 1.6,
+        heatRate = 1.0,
+        coolingEfficiency = 0.85,
+        wearRate = 0.4,
+        drivetrainCompat = { 'rwd', 'awd' },
+        requiredParts = { 'motor_mount_v8', 'wiring_harness' },
+        transmissionCompat = { '5speed', '6speed', '6speed_auto' },
+        installTime = 280,
+        price = 20000,
+        torqueCurve = {
+            { rpm = 1000, percent = 50 },
+            { rpm = 2000, percent = 70 },
+            { rpm = 3500, percent = 90 },
+            { rpm = 4500, percent = 100 },
+            { rpm = 5500, percent = 92 },
+            { rpm = 6500, percent = 78 }
+        }
+    },
+    ['v8_ls3'] = {
+        name = 'LS3 6.2L V8',
+        type = 'v8',
+        hp = 430,
+        torque = 580,
+        weight = 185.0,
+        rpmMax = 6600,
+        rpmRedline = 6000,
+        fuelConsumption = 1.8,
+        heatRate = 1.2,
+        coolingEfficiency = 0.8,
+        wearRate = 0.5,
+        drivetrainCompat = { 'rwd', 'awd' },
+        requiredParts = { 'motor_mount_v8', 'wiring_harness', 'ecu_adapter' },
+        transmissionCompat = { '5speed', '6speed', '6speed_auto' },
+        installTime = 300,
+        price = 25000,
+        torqueCurve = {
+            { rpm = 1000, percent = 50 },
+            { rpm = 2000, percent = 70 },
+            { rpm = 3500, percent = 95 },
+            { rpm = 4500, percent = 100 },
+            { rpm = 5500, percent = 92 },
+            { rpm = 6600, percent = 78 }
+        }
     }
 }

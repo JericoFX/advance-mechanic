@@ -54,32 +54,45 @@ end
 function Tuning.PerformanceMenu(vehicle)
     local options = {}
     
+    local vehicleState = Entity(vehicle).state
+    local hasCustomEngine = vehicleState.engineData ~= nil
+
     for modType, modData in pairs(performanceMods) do
-        local currentLevel = GetVehicleMod(vehicle, modType)
-        local maxLevel = GetNumVehicleMods(vehicle, modType) - 1
-        
-        if modType == 18 then -- Turbo
-            currentLevel = IsToggleModOn(vehicle, modType) and 1 or -1
-            maxLevel = 1
-        end
-        
-        local price = modData.basePrice * (currentLevel + 2)
-        local nextLevel = math.min(currentLevel + 1, maxLevel)
-        
-        table.insert(options, {
-            title = modData.label,
-            description = locale('current_level', currentLevel + 1, maxLevel + 1),
-            icon = 'fas fa-wrench',
-            progress = ((currentLevel + 1) / (maxLevel + 1)) * 100,
-            colorScheme = currentLevel == maxLevel and 'green' or 'orange',
-            disabled = currentLevel >= maxLevel,
-            metadata = {
-                {label = locale('price'), value = '$' .. price}
-            },
-            onSelect = function()
-                Tuning.ApplyPerformanceMod(vehicle, modType, nextLevel)
+        if modType == 11 and hasCustomEngine then
+            table.insert(options, {
+                title = modData.label or locale('engine'),
+                description = locale('engine_mod_disabled_custom'),
+                icon = 'fas fa-ban',
+                iconColor = '#95a5a6',
+                disabled = true
+            })
+        else
+            local currentLevel = GetVehicleMod(vehicle, modType)
+            local maxLevel = GetNumVehicleMods(vehicle, modType) - 1
+
+            if modType == 18 then
+                currentLevel = IsToggleModOn(vehicle, modType) and 1 or -1
+                maxLevel = 1
             end
-        })
+
+            local price = modData.basePrice * (currentLevel + 2)
+            local nextLevel = math.min(currentLevel + 1, maxLevel)
+
+            table.insert(options, {
+                title = modData.label,
+                description = locale('current_level', currentLevel + 1, maxLevel + 1),
+                icon = 'fas fa-wrench',
+                progress = ((currentLevel + 1) / (maxLevel + 1)) * 100,
+                colorScheme = currentLevel == maxLevel and 'green' or 'orange',
+                disabled = currentLevel >= maxLevel,
+                metadata = {
+                    {label = locale('price'), value = '$' .. price}
+                },
+                onSelect = function()
+                    Tuning.ApplyPerformanceMod(vehicle, modType, nextLevel)
+                end
+            })
+        end
     end
     
     lib.registerContext({

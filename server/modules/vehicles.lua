@@ -131,7 +131,17 @@ function Vehicles.UpdateColor(source, plate, colorType, color)
         -- Apply to vehicle if it exists
         local vehicle = Vehicles.GetVehicleByPlate(plate)
         if vehicle and DoesEntityExist(vehicle) then
-            TriggerClientEvent('mechanic:client:syncVehicleProperties', -1, NetworkGetNetworkIdFromEntity(vehicle), props)
+            local vehicleCoords = GetEntityCoords(vehicle)
+            local netId = NetworkGetNetworkIdFromEntity(vehicle)
+            for _, playerId in ipairs(GetPlayers()) do
+                local ped = GetPlayerPed(tonumber(playerId))
+                if ped and DoesEntityExist(ped) then
+                    local playerCoords = GetEntityCoords(ped)
+                    if #(playerCoords - vehicleCoords) < 300.0 then
+                        TriggerClientEvent('mechanic:client:syncVehicleProperties', tonumber(playerId), netId, props)
+                    end
+                end
+            end
         end
         
         return true
@@ -153,8 +163,10 @@ end
 
 -- Handle vehicle damage
 function Vehicles.ProcessDamage(plate, impactData)
+    if type(impactData) ~= 'table' or type(impactData.side) ~= 'string' then return end
+
     local inspectionData = Vehicles.GetInspectionData(plate)
-    
+
     -- Apply damage based on impact
     if impactData.side:find('front') then
         inspectionData.engine.health = math.max(0, (inspectionData.engine.health or 100) - (impactData.severity * 10))
@@ -218,7 +230,9 @@ function Vehicles.RepairPart(source, plate, part, amount)
         -- Save data
         if Vehicles.UpdateInspectionData(plate, inspectionData) then
             -- Log repair
-            print(string.format('[Mechanic] %s repaired %s on vehicle %s', Player.PlayerData.name, part, plate))
+            local charinfo = Player.PlayerData.charinfo
+            local playerName = charinfo and (charinfo.firstname .. ' ' .. charinfo.lastname) or 'Unknown'
+            print(string.format('[Mechanic] %s repaired %s on vehicle %s', playerName, part, plate))
             
             return true
         end
@@ -503,28 +517,35 @@ RegisterNetEvent('mechanic:server:syncVehicleProperties', function(netId, props)
         return
     end
 
-    TriggerClientEvent('mechanic:client:syncVehicleProperties', -1, netId, sanitizedProps)
+    local vehicleCoords = GetEntityCoords(vehicle)
+    for _, playerId in ipairs(GetPlayers()) do
+        local ped = GetPlayerPed(tonumber(playerId))
+        if ped and DoesEntityExist(ped) then
+            local playerCoords = GetEntityCoords(ped)
+            if #(playerCoords - vehicleCoords) < 300.0 then
+                TriggerClientEvent('mechanic:client:syncVehicleProperties', tonumber(playerId), netId, sanitizedProps)
+            end
+        end
+    end
 end)
 
 -- Sincronización de niveles de fluidos
 RegisterNetEvent('mechanic:server:syncFluidLevels', function(plate, fluidData)
     local src = source
-    
-    -- Validar datos
+
+    if not Validation.CheckRateLimit(src, 'fluid_sync', Config.Security.rateLimits.fluidSyncMs) then
+        Validation.LogDenied(src, 'fluid_sync', 'rate_limited')
+        return
+    end
+
     if not Validation.IsValidPlate(plate) or type(fluidData) ~= 'table' then return end
-    
-    -- Validar que el jugador esté cerca del vehículo
+
     local ped = GetPlayerPed(src)
     local vehicle = Vehicles.GetVehicleByPlate(plate)
-    
+
     if vehicle and DoesEntityExist(vehicle) then
         local Player = Framework.GetPlayer(src)
         if not Player then return end
-
-        if not Validation.CheckRateLimit(src, 'fluid_sync', Config.Security.rateLimits.fluidSyncMs) then
-            Validation.LogDenied(src, 'fluid_sync', 'rate_limited')
-            return
-        end
 
         local isOwner = Validation.IsVehicleOwnedBy(plate, Player.PlayerData.citizenid)
         if not isOwner and not Validation.IsMechanic(Player) and not Validation.IsAdmin(src) then

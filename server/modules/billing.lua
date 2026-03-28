@@ -60,8 +60,11 @@ lib.callback.register('mechanic:server:sendInvoice', function(source, invoice)
             Player.PlayerData.citizenid
         })
     else
-        -- TODO: add ESX billing integration.
-        return false
+        if GetResourceState('esx_billing') == 'started' then
+            TriggerEvent('esx_billing:sendInvoice', Target.PlayerData.source or normalized.targetPlayer, 'society_mechanic', Config.JobName .. ' Invoice', normalized.total)
+        else
+            return false
+        end
     end
     
     -- Notify both players
@@ -125,10 +128,13 @@ lib.callback.register('mechanic:server:sendQuickBill', function(source, targetId
             Player.PlayerData.citizenid
         })
     else
-        -- TODO: add ESX billing integration.
-        return false
+        if GetResourceState('esx_billing') == 'started' then
+            TriggerEvent('esx_billing:sendInvoice', Target.PlayerData.source or targetId, 'society_mechanic', Config.JobName .. ' Invoice', billAmount)
+        else
+            return false
+        end
     end
-    
+
     TriggerClientEvent('ox_lib:notify', src, {
         title = 'Bill Sent',
         type = 'success'

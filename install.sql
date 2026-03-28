@@ -191,3 +191,17 @@ CREATE TABLE IF NOT EXISTS `suspension_presets` (
     UNIQUE KEY `uk_shop_preset` (`shop_id`, `name`),
     FOREIGN KEY (`shop_id`) REFERENCES `mechanic_shops`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `vehicle_engines` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `plate` VARCHAR(15) NOT NULL,
+    `engine_id` VARCHAR(50) NOT NULL,
+    `wear` DECIMAL(5,2) DEFAULT 0.00,
+    `temperature` DECIMAL(5,2) DEFAULT 20.00,
+    `total_km` DECIMAL(10,2) DEFAULT 0.00,
+    `installed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `installed_by` VARCHAR(50) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_plate` (`plate`),
+    KEY `idx_engine_id` (`engine_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

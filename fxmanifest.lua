@@ -4,11 +4,9 @@ lua54 'yes'
 
 author 'JericoFX'
 description 'Complete mechanic job with realistic damage, inspection, and management'
-version '1.0.0'
+version '1.1.0'
 
 ox_lib 'locale'
-
-ui_page 'web/paint/index.html'
 
 shared_scripts {
     '@ox_lib/init.lua',
@@ -18,8 +16,6 @@ shared_scripts {
 client_scripts {
     'client/modules/*.lua',
     'client/modules/fluid/*.lua',
-    'client/modules/tuning.lua',
-    'client/modules/billing.lua',
     'client/init.lua'
 }
 
@@ -30,10 +26,7 @@ server_scripts {
 }
 
 files {
-    'locales/*.json',
-    'web/paint/index.html',
-    'web/paint/style.css',
-    'web/paint/script.js'
+    'locales/*.json'
 }
 
 dependencies {
@@ -42,3 +35,5 @@ dependencies {
     'ox_inventory',
     'ox_target'
 }
+
+server_script 'version_check.lua'

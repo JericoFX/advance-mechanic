@@ -252,10 +252,14 @@ lib.callback.register('mechanic:server:getVehicleData', function(source, plate)
     
     if result and result[1] then
         local vehicleData = result[1]
-        vehicleData.maintenanceHistory = json.decode(vehicleData.maintenance_history or '[]')
-        vehicleData.inspectionData = json.decode(vehicleData.inspection_data or '{}')
-        vehicleData.fluidData = json.decode(vehicleData.fluid_data or '{}')
-        vehicleData.lastDiagnostic = json.decode(vehicleData.last_diagnostic or '{}')
+        local function safeDecode(str, fallback)
+            local ok, result = pcall(json.decode, str or fallback)
+            return ok and result or json.decode(fallback)
+        end
+        vehicleData.maintenanceHistory = safeDecode(vehicleData.maintenance_history, '[]')
+        vehicleData.inspectionData = safeDecode(vehicleData.inspection_data, '{}')
+        vehicleData.fluidData = safeDecode(vehicleData.fluid_data, '{}')
+        vehicleData.lastDiagnostic = safeDecode(vehicleData.last_diagnostic, '{}')
         vehicleData.owner = vehicleData.citizenid
         return vehicleData
     end

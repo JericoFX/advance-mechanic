@@ -2,14 +2,16 @@ local Damage = {}
 
 local damageCheckTime = 0
 local monitoringThread = nil
+local isMonitoring = false
 
 function Damage.StartMonitoring(vehicle)
     if monitoringThread then return end
-    
+
+    isMonitoring = true
     damageCheckTime = GetGameTimer() + 5000
-    
+
     monitoringThread = CreateThread(function()
-        while cache.vehicle == vehicle and cache.seat == -1 do
+        while isMonitoring and cache.vehicle == vehicle and cache.seat == -1 do
             if GetGameTimer() > damageCheckTime then
                 local speed = GetEntitySpeed(vehicle) * 3.6
                 
@@ -20,7 +22,7 @@ function Damage.StartMonitoring(vehicle)
                     TriggerServerEvent('mechanic:server:vehicleDamaged', plate, impactData)
                     damageCheckTime = GetGameTimer() + 3000
                     
-                    if impactData.side == 'front' and speed > 50 then
+                    if impactData.side and impactData.side:find('front') and speed > 50 then
                         SetVehicleEngineHealth(vehicle, GetVehicleEngineHealth(vehicle) - 100)
                     end
                     
@@ -38,9 +40,7 @@ function Damage.StartMonitoring(vehicle)
 end
 
 function Damage.StopMonitoring()
-    if monitoringThread then
-        monitoringThread = nil
-    end
+    isMonitoring = false
 end
 
 function Damage.Monitor()
